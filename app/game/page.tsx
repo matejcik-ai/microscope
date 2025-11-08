@@ -88,7 +88,9 @@ export default function GamePage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get AI response');
+        const errorData = await response.json();
+        console.error('API Error:', errorData);
+        throw new Error(errorData.details || errorData.error || 'Failed to get AI response');
       }
 
       const data = await response.json();
@@ -99,12 +101,13 @@ export default function GamePage() {
         playerName: 'AI Player',
         content: data.response,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to get AI response:', error);
+      const errorMessage = error?.message || 'Unknown error occurred';
       addMessage(conversationId, {
         role: 'system',
         playerId: 'system',
-        content: 'Failed to get AI response. Please try again.',
+        content: `Failed to get AI response: ${errorMessage}\n\nPlease check:\n- Your API key is correct\n- You have available API credits\n- Your internet connection is working`,
       });
     } finally {
       setIsLoading(false);

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAIProvider } from '@/lib/ai';
 import type { AIMessage } from '@/lib/ai';
 
+// Force this to run in Node.js runtime instead of Edge
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
     const { messages, gameContext, apiSettings } = await request.json();
@@ -40,10 +43,19 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ response });
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI chat error:', error);
+
+    // Return more detailed error info
+    const errorMessage = error?.message || 'Unknown error';
+    const errorType = error?.constructor?.name || 'Error';
+
     return NextResponse.json(
-      { error: 'Failed to generate AI response' },
+      {
+        error: 'Failed to generate AI response',
+        details: errorMessage,
+        type: errorType,
+      },
       { status: 500 }
     );
   }

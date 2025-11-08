@@ -7,7 +7,11 @@ export class ClaudeProvider implements AIProvider {
   private defaultModel: string;
 
   constructor(apiKey: string, defaultModel: string = 'claude-3-5-sonnet-20241022') {
-    this.client = new Anthropic({ apiKey });
+    this.client = new Anthropic({
+      apiKey,
+      // Ensure compatibility with edge runtime
+      dangerouslyAllowBrowser: false,
+    });
     this.defaultModel = defaultModel;
   }
 
