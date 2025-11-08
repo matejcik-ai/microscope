@@ -377,9 +377,14 @@ export default function GamePage() {
   return (
     <div style={{
       height: '100vh',
+      width: '100vw',
       display: 'flex',
       flexDirection: 'column',
       fontFamily: 'system-ui, sans-serif',
+      overflow: 'hidden',
+      position: 'fixed',
+      top: 0,
+      left: 0,
     }}>
       {/* Top Bar */}
       <div style={{
@@ -480,51 +485,65 @@ export default function GamePage() {
           />
         )}
 
-        {/* Left: Timeline Sidebar (Always Visible, Collapsible) */}
+        {/* Hamburger Toggle - Always Visible (Fixed Position) */}
+        <button
+          onClick={() => setIsTimelineOpen(!isTimelineOpen)}
+          style={{
+            position: 'absolute',
+            top: '10px',
+            left: '10px',
+            zIndex: 1001,
+            padding: '0.75rem',
+            background: '#1976d2',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '50px',
+            height: '50px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          }}
+          title={isTimelineOpen ? 'Close Sidebar' : 'Open Sidebar'}
+        >
+          {isTimelineOpen ? '✕' : '☰'}
+        </button>
+
+        {/* Left: Timeline Sidebar (Overlay on Mobile) */}
         <div
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
             bottom: 0,
-            width: isTimelineOpen ? '300px' : '50px',
-            maxWidth: isTimelineOpen ? '80vw' : '50px',
+            width: isTimelineOpen ? 'min(300px, 80vw)' : '0',
             background: 'white',
             transition: 'width 0.3s ease-in-out',
-            zIndex: 999,
-            boxShadow: '2px 0 8px rgba(0,0,0,0.1)',
-            display: 'flex',
-            flexDirection: 'column',
+            zIndex: 1000,
+            boxShadow: isTimelineOpen ? '2px 0 8px rgba(0,0,0,0.2)' : 'none',
+            overflow: 'hidden',
             borderRight: '1px solid #e0e0e0',
           }}
         >
-          {/* Hamburger Toggle - Always Visible */}
-          <button
-            onClick={() => setIsTimelineOpen(!isTimelineOpen)}
-            style={{
-              padding: '0.75rem',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '1.5rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '50px',
-              flexShrink: 0,
-            }}
-            title={isTimelineOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
-          >
-            {isTimelineOpen ? '◀' : '☰'}
-          </button>
-
-          {/* Timeline Content - Only visible when expanded */}
+          {/* Timeline Content */}
           {isTimelineOpen && (
-            <div style={{ flex: 1, overflow: 'hidden' }}>
+            <div style={{
+              width: 'min(300px, 80vw)',
+              height: '100%',
+              overflow: 'hidden',
+              paddingTop: '70px', // Space for the close button
+            }}>
               <Timeline
                 gameState={gameState}
                 onSelect={(type, id) => {
                   setSelection(type, id);
+                  // On mobile, close sidebar after selection
+                  if (window.innerWidth < 768) {
+                    setIsTimelineOpen(false);
+                  }
                 }}
                 selectedId={gameState.currentSelection?.id}
                 selectedType={gameState.currentSelection?.type}
@@ -533,14 +552,13 @@ export default function GamePage() {
           )}
         </div>
 
-        {/* Right: Conversation (Adjusts based on sidebar width) */}
+        {/* Right: Conversation (Full Width) */}
         <div style={{
           position: 'absolute',
           top: 0,
-          left: isTimelineOpen ? '300px' : '50px',
+          left: 0,
           right: 0,
           bottom: 0,
-          transition: 'left 0.3s ease-in-out',
         }}>
           <ConversationView
             conversation={getSelectedConversation()}
@@ -565,24 +583,37 @@ export default function GamePage() {
 
       {/* Add Period Modal */}
       {showAddPeriod && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
+        <div
+          onClick={() => {
+            setShowAddPeriod(false);
+            setIsTimelineOpen(false);
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 1100,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          padding: '1rem',
+          overflowY: 'auto',
         }}>
-          <div style={{
-            background: 'white',
-            padding: '2rem',
-            borderRadius: '8px',
-            width: '500px',
-            maxWidth: '90%',
-          }}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              padding: '1.5rem',
+              borderRadius: '8px',
+              width: '100%',
+              maxWidth: '500px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxSizing: 'border-box',
+            }}>
             <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Add Period</h2>
             <form onSubmit={handleAddPeriod}>
               <div style={{ marginBottom: '1rem' }}>
@@ -598,6 +629,8 @@ export default function GamePage() {
                     padding: '0.5rem',
                     border: '1px solid #ddd',
                     borderRadius: '4px',
+                    boxSizing: 'border-box',
+                    fontSize: '16px', // Prevent zoom on iOS
                   }}
                 />
               </div>
@@ -613,6 +646,9 @@ export default function GamePage() {
                     padding: '0.5rem',
                     border: '1px solid #ddd',
                     borderRadius: '4px',
+                    boxSizing: 'border-box',
+                    fontSize: '16px', // Prevent zoom on iOS
+                    fontFamily: 'inherit',
                   }}
                 />
               </div>

@@ -100,17 +100,22 @@ export default function APISettingsModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 1000,
+        zIndex: 1100,
+        padding: '1rem',
+        overflowY: 'auto',
       }}
       onClick={canClose ? onClose : undefined}
     >
       <div
         style={{
           background: 'white',
-          padding: '2rem',
+          padding: '1.5rem',
           borderRadius: '8px',
-          width: '500px',
-          maxWidth: '90%',
+          width: '100%',
+          maxWidth: '500px',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          boxSizing: 'border-box',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -140,7 +145,8 @@ export default function APISettingsModal({
                 padding: '0.5rem',
                 border: '1px solid #ddd',
                 borderRadius: '4px',
-                fontSize: '1rem',
+                fontSize: '16px',
+                boxSizing: 'border-box',
               }}
             >
               <option value="claude">Anthropic Claude</option>
@@ -167,7 +173,8 @@ export default function APISettingsModal({
                 padding: '0.5rem',
                 border: '1px solid #ddd',
                 borderRadius: '4px',
-                fontSize: '1rem',
+                fontSize: '16px',
+                boxSizing: 'border-box',
                 opacity: isLoadingModels ? 0.6 : 1,
               }}
             >
@@ -211,7 +218,8 @@ export default function APISettingsModal({
                 padding: '0.5rem',
                 border: '1px solid #ddd',
                 borderRadius: '4px',
-                fontSize: '1rem',
+                fontSize: '16px',
+                boxSizing: 'border-box',
               }}
             />
             <p style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
