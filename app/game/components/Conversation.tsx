@@ -17,18 +17,39 @@ export default function ConversationView({
   isLoading = false,
 }: ConversationProps) {
   const [input, setInput] = useState('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation?.messages]);
 
+  // Auto-resize textarea to fit content
+  useEffect(() => {
+    if (textareaRef.current && !isFullscreen) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, [input, isFullscreen]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && !isLoading) {
       onSendMessage(input.trim());
       setInput('');
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Submit on Enter (without Shift)
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (input.trim() && !isLoading) {
+        onSendMessage(input.trim());
+        setInput('');
+      }
     }
   };
 
@@ -106,21 +127,46 @@ export default function ConversationView({
         borderTop: '1px solid #e0e0e0',
         background: '#fafafa',
       }}>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <input
-            type="text"
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+          <textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
+            onKeyDown={handleKeyDown}
+            placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
             disabled={isLoading}
+            rows={1}
             style={{
               flex: 1,
               padding: '0.75rem',
               border: '1px solid #ddd',
               borderRadius: '4px',
               fontSize: '1rem',
+              resize: 'none',
+              minHeight: '44px',
+              maxHeight: isFullscreen ? 'none' : '200px',
+              overflow: 'auto',
+              fontFamily: 'inherit',
             }}
           />
+          <button
+            type="button"
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            style={{
+              padding: '0.75rem',
+              background: isFullscreen ? '#1976d2' : '#f0f0f0',
+              color: isFullscreen ? 'white' : '#333',
+              border: '1px solid #ddd',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '1.25rem',
+              minWidth: '44px',
+              height: '44px',
+            }}
+            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen editor'}
+          >
+            {isFullscreen ? '⤓' : '⤢'}
+          </button>
           <button
             type="submit"
             disabled={!input.trim() || isLoading}
@@ -133,12 +179,136 @@ export default function ConversationView({
               cursor: input.trim() && !isLoading ? 'pointer' : 'not-allowed',
               fontSize: '1rem',
               fontWeight: '500',
+              minHeight: '44px',
             }}
           >
             Send
           </button>
         </div>
       </form>
+
+      {/* Fullscreen Editor Modal */}
+      {isFullscreen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+            padding: '2rem',
+          }}
+          onClick={() => setIsFullscreen(false)}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: '8px',
+              width: '100%',
+              maxWidth: '900px',
+              height: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              padding: '1rem',
+              borderBottom: '1px solid #e0e0e0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '600' }}>
+                Compose Message
+              </h3>
+              <button
+                onClick={() => setIsFullscreen(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: '#666',
+                  padding: '0',
+                  width: '32px',
+                  height: '32px',
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
+              disabled={isLoading}
+              autoFocus
+              style={{
+                flex: 1,
+                padding: '1rem',
+                border: 'none',
+                fontSize: '1rem',
+                resize: 'none',
+                outline: 'none',
+                fontFamily: 'inherit',
+              }}
+            />
+            <div style={{
+              padding: '1rem',
+              borderTop: '1px solid #e0e0e0',
+              display: 'flex',
+              gap: '0.5rem',
+              justifyContent: 'flex-end',
+            }}>
+              <button
+                type="button"
+                onClick={() => setIsFullscreen(false)}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: '#f0f0f0',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (input.trim() && !isLoading) {
+                    onSendMessage(input.trim());
+                    setInput('');
+                    setIsFullscreen(false);
+                  }
+                }}
+                disabled={!input.trim() || isLoading}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: input.trim() && !isLoading ? '#1976d2' : '#ccc',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: input.trim() && !isLoading ? 'pointer' : 'not-allowed',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                }}
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
