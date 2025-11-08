@@ -119,6 +119,19 @@ export default function Timeline({ gameState, onSelect, selectedId, selectedType
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {period.isBookend && (
+                      <span style={{
+                        fontSize: '0.75rem',
+                        padding: '0.125rem 0.5rem',
+                        borderRadius: '4px',
+                        background: '#e3f2fd',
+                        border: '1px solid #1976d2',
+                        color: '#1976d2',
+                        fontWeight: '600',
+                      }}>
+                        📌
+                      </span>
+                    )}
                     <span style={{
                       fontSize: '0.75rem',
                       padding: '0.125rem 0.5rem',

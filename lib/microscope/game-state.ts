@@ -95,7 +95,7 @@ export function useGameState(initialGameId?: string) {
     }
   }, [gameState, isLoaded]);
 
-  const addPeriod = useCallback((title: string, description: string, tone: 'light' | 'dark'): string | null => {
+  const addPeriod = useCallback((title: string, description: string, tone: 'light' | 'dark', isBookend: boolean = false): string | null => {
     let createdId: string | null = null;
     setGameState((prev) => {
       if (!prev) return prev;
@@ -111,6 +111,7 @@ export function useGameState(initialGameId?: string) {
         tone,
         conversationId,
         order: prev.periods.length,
+        isBookend,
       };
 
       return {

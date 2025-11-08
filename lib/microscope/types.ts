@@ -33,6 +33,7 @@ export interface Period {
   tone: Tone;
   conversationId: string;
   order: number; // For display ordering
+  isBookend?: boolean; // True for timeline start/end bookends
 }
 
 export interface Event {

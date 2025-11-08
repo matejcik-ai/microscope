@@ -34,7 +34,7 @@ export default function GamePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showAddPeriod, setShowAddPeriod] = useState(false);
   const [showAPISettings, setShowAPISettings] = useState(false);
-  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(true); // Start with sidebar open
   const [showDebugConsole, setShowDebugConsole] = useState(false);
   const [showGameSwitcher, setShowGameSwitcher] = useState(false);
   const [restoreContent, setRestoreContent] = useState<string | null>(null);
@@ -69,7 +69,7 @@ export default function GamePage() {
         const isBookend = parsed.type === 'create-bookend-period';
 
         // Create the period
-        addPeriod(title, description, tone);
+        addPeriod(title, description, tone, isBookend);
 
         // Find the created period (it was just added)
         setTimeout(() => {
@@ -391,26 +391,6 @@ export default function GamePage() {
         alignItems: 'center',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button
-            onClick={() => setIsTimelineOpen(!isTimelineOpen)}
-            style={{
-              padding: '0.5rem',
-              background: 'rgba(255,255,255,0.2)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '1.25rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '2.5rem',
-              height: '2.5rem',
-            }}
-            title="Toggle Timeline"
-          >
-            ☰
-          </button>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
             Microscope RPG
           </h1>
@@ -500,37 +480,67 @@ export default function GamePage() {
           />
         )}
 
-        {/* Left: Timeline (Sidebar) */}
+        {/* Left: Timeline Sidebar (Always Visible, Collapsible) */}
         <div
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
             bottom: 0,
-            width: '300px',
-            maxWidth: '80vw',
+            width: isTimelineOpen ? '300px' : '50px',
+            maxWidth: isTimelineOpen ? '80vw' : '50px',
             background: 'white',
-            transform: isTimelineOpen ? 'translateX(0)' : 'translateX(-100%)',
-            transition: 'transform 0.3s ease-in-out',
+            transition: 'width 0.3s ease-in-out',
             zIndex: 999,
-            boxShadow: isTimelineOpen ? '2px 0 8px rgba(0,0,0,0.2)' : 'none',
+            boxShadow: '2px 0 8px rgba(0,0,0,0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            borderRight: '1px solid #e0e0e0',
           }}
         >
-          <Timeline
-            gameState={gameState}
-            onSelect={(type, id) => {
-              setSelection(type, id);
-              setIsTimelineOpen(false);
+          {/* Hamburger Toggle - Always Visible */}
+          <button
+            onClick={() => setIsTimelineOpen(!isTimelineOpen)}
+            style={{
+              padding: '0.75rem',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '50px',
+              flexShrink: 0,
             }}
-            selectedId={gameState.currentSelection?.id}
-            selectedType={gameState.currentSelection?.type}
-          />
+            title={isTimelineOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
+          >
+            {isTimelineOpen ? '◀' : '☰'}
+          </button>
+
+          {/* Timeline Content - Only visible when expanded */}
+          {isTimelineOpen && (
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <Timeline
+                gameState={gameState}
+                onSelect={(type, id) => {
+                  setSelection(type, id);
+                }}
+                selectedId={gameState.currentSelection?.id}
+                selectedType={gameState.currentSelection?.type}
+              />
+            </div>
+          )}
         </div>
 
-        {/* Right: Conversation (Full Width) */}
+        {/* Right: Conversation (Adjusts based on sidebar width) */}
         <div style={{
-          height: '100%',
-          width: '100%',
+          position: 'absolute',
+          top: 0,
+          left: isTimelineOpen ? '300px' : '50px',
+          right: 0,
+          bottom: 0,
+          transition: 'left 0.3s ease-in-out',
         }}>
           <ConversationView
             conversation={getSelectedConversation()}
