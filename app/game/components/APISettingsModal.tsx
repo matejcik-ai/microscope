@@ -10,6 +10,21 @@ interface APISettingsModalProps {
   canClose?: boolean;
 }
 
+// Current Claude models as of early 2025
+const CLAUDE_MODELS = [
+  { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (Latest)', recommended: true },
+  { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku (Fast & Cheap)' },
+  { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus (Most Capable)' },
+  { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet' },
+  { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' },
+];
+
+const OPENAI_MODELS = [
+  { id: 'gpt-4-turbo-preview', name: 'GPT-4 Turbo (Latest)', recommended: true },
+  { id: 'gpt-4', name: 'GPT-4' },
+  { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' },
+];
+
 export default function APISettingsModal({
   currentSettings,
   onSave,
@@ -20,7 +35,11 @@ export default function APISettingsModal({
     currentSettings?.provider || 'claude'
   );
   const [apiKey, setApiKey] = useState(currentSettings?.apiKey || '');
-  const [model, setModel] = useState(currentSettings?.model || '');
+  const [model, setModel] = useState(
+    currentSettings?.model || CLAUDE_MODELS[0].id
+  );
+
+  const models = provider === 'claude' ? CLAUDE_MODELS : OPENAI_MODELS;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,9 +47,16 @@ export default function APISettingsModal({
       onSave({
         provider,
         apiKey: apiKey.trim(),
-        model: model.trim() || undefined,
+        model: model || undefined,
       });
     }
+  };
+
+  const handleProviderChange = (newProvider: 'claude' | 'openai') => {
+    setProvider(newProvider);
+    // Set default model for the new provider
+    const defaultModels = newProvider === 'claude' ? CLAUDE_MODELS : OPENAI_MODELS;
+    setModel(defaultModels[0].id);
   };
 
   return (
@@ -79,7 +105,7 @@ export default function APISettingsModal({
             </label>
             <select
               value={provider}
-              onChange={(e) => setProvider(e.target.value as 'claude' | 'openai')}
+              onChange={(e) => handleProviderChange(e.target.value as 'claude' | 'openai')}
               style={{
                 width: '100%',
                 padding: '0.5rem',
@@ -91,6 +117,38 @@ export default function APISettingsModal({
               <option value="claude">Anthropic Claude</option>
               <option value="openai">OpenAI GPT (not yet implemented)</option>
             </select>
+          </div>
+
+          <div style={{ marginBottom: '1rem' }}>
+            <label
+              style={{
+                display: 'block',
+                marginBottom: '0.5rem',
+                fontWeight: '600',
+              }}
+            >
+              Model
+            </label>
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                fontSize: '1rem',
+              }}
+            >
+              {models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name} {m.recommended ? '⭐' : ''}
+                </option>
+              ))}
+            </select>
+            <p style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
+              Recommended: {models.find(m => m.recommended)?.name}
+            </p>
           </div>
 
           <div style={{ marginBottom: '1rem' }}>
@@ -147,38 +205,6 @@ export default function APISettingsModal({
                   </a>
                 </>
               )}
-            </p>
-          </div>
-
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label
-              style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                fontWeight: '600',
-              }}
-            >
-              Model (optional)
-            </label>
-            <input
-              type="text"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              placeholder={
-                provider === 'claude'
-                  ? 'claude-3-5-sonnet-20241022 (default)'
-                  : 'gpt-4-turbo-preview (default)'
-              }
-              style={{
-                width: '100%',
-                padding: '0.5rem',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '1rem',
-              }}
-            />
-            <p style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
-              Leave blank to use the default model
             </p>
           </div>
 
