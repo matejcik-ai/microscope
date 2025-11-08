@@ -22,6 +22,7 @@ export default function GamePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showAddPeriod, setShowAddPeriod] = useState(false);
   const [showAPISettings, setShowAPISettings] = useState(false);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
 
   if (!isLoaded || !gameState) {
     return (
@@ -215,9 +216,31 @@ export default function GamePage() {
         justifyContent: 'space-between',
         alignItems: 'center',
       }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
-          Microscope RPG
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <button
+            onClick={() => setIsTimelineOpen(!isTimelineOpen)}
+            style={{
+              padding: '0.5rem',
+              background: 'rgba(255,255,255,0.2)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '1.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '2.5rem',
+              height: '2.5rem',
+            }}
+            title="Toggle Timeline"
+          >
+            ☰
+          </button>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
+            Microscope RPG
+          </h1>
+        </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
             onClick={() => setShowAPISettings(true)}
@@ -254,25 +277,64 @@ export default function GamePage() {
       {/* Main Content */}
       <div style={{
         flex: 1,
-        display: 'grid',
-        gridTemplateColumns: '300px 1fr',
+        position: 'relative',
         overflow: 'hidden',
       }}>
-        {/* Left: Timeline */}
-        <Timeline
-          gameState={gameState}
-          onSelect={(type, id) => setSelection(type, id)}
-          selectedId={gameState.currentSelection?.id}
-          selectedType={gameState.currentSelection?.type}
-        />
+        {/* Backdrop */}
+        {isTimelineOpen && (
+          <div
+            onClick={() => setIsTimelineOpen(false)}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 998,
+            }}
+          />
+        )}
 
-        {/* Right: Conversation */}
-        <ConversationView
-          conversation={getSelectedConversation()}
-          title={getTitle()}
-          onSendMessage={handleSendMessage}
-          isLoading={isLoading}
-        />
+        {/* Left: Timeline (Sidebar) */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            bottom: 0,
+            width: '300px',
+            maxWidth: '80vw',
+            background: 'white',
+            transform: isTimelineOpen ? 'translateX(0)' : 'translateX(-100%)',
+            transition: 'transform 0.3s ease-in-out',
+            zIndex: 999,
+            boxShadow: isTimelineOpen ? '2px 0 8px rgba(0,0,0,0.2)' : 'none',
+          }}
+        >
+          <Timeline
+            gameState={gameState}
+            onSelect={(type, id) => {
+              setSelection(type, id);
+              setIsTimelineOpen(false);
+            }}
+            selectedId={gameState.currentSelection?.id}
+            selectedType={gameState.currentSelection?.type}
+          />
+        </div>
+
+        {/* Right: Conversation (Full Width) */}
+        <div style={{
+          height: '100%',
+          width: '100%',
+        }}>
+          <ConversationView
+            conversation={getSelectedConversation()}
+            title={getTitle()}
+            onSendMessage={handleSendMessage}
+            isLoading={isLoading}
+          />
+        </div>
       </div>
 
       {/* API Settings Modal */}
