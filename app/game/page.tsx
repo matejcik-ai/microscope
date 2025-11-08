@@ -6,18 +6,22 @@ import Timeline from './components/Timeline';
 import ConversationView from './components/Conversation';
 import APISettingsModal from './components/APISettingsModal';
 import DebugConsole from './components/DebugConsole';
+import GameSwitcher from './components/GameSwitcher';
 import type { APISettings } from '@/lib/microscope/types';
 
 export default function GamePage() {
   const {
     gameState,
     isLoaded,
+    currentGameId,
     addPeriod,
     addEvent,
     addMessage,
     setSelection,
     getSelectedConversation,
     setAPISettings,
+    switchGame,
+    createNewGame,
   } = useGameState();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -25,6 +29,7 @@ export default function GamePage() {
   const [showAPISettings, setShowAPISettings] = useState(false);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [showDebugConsole, setShowDebugConsole] = useState(false);
+  const [showGameSwitcher, setShowGameSwitcher] = useState(false);
 
   if (!isLoaded || !gameState) {
     return (
@@ -107,9 +112,9 @@ export default function GamePage() {
       console.error('Failed to get AI response:', error);
       const errorMessage = error?.message || 'Unknown error occurred';
       addMessage(conversationId, {
-        role: 'system',
+        role: 'error',
         playerId: 'system',
-        content: `Failed to get AI response: ${errorMessage}\n\nPlease check:\n- Your API key is correct\n- You have available API credits\n- Your internet connection is working`,
+        content: `${errorMessage}\n\nPlease check:\n• Your API key is correct\n• You have available API credits\n• The selected model is available\n• Your internet connection is working`,
       });
     } finally {
       setIsLoading(false);
@@ -247,6 +252,21 @@ export default function GamePage() {
           </h1>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setShowGameSwitcher(true)}
+            style={{
+              padding: '0.5rem 1rem',
+              background: 'rgba(255,255,255,0.2)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: '600',
+            }}
+            title="Switch Game"
+          >
+            📁
+          </button>
           <button
             onClick={() => setShowDebugConsole(true)}
             style={{
@@ -472,6 +492,16 @@ export default function GamePage() {
       {/* Debug Console */}
       {showDebugConsole && (
         <DebugConsole onClose={() => setShowDebugConsole(false)} />
+      )}
+
+      {/* Game Switcher */}
+      {showGameSwitcher && (
+        <GameSwitcher
+          currentGameId={currentGameId}
+          onSwitchGame={switchGame}
+          onCreateNewGame={createNewGame}
+          onClose={() => setShowGameSwitcher(false)}
+        />
       )}
     </div>
   );

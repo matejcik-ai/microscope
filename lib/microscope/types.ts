@@ -7,7 +7,7 @@ export type PlayerType = 'human' | 'ai';
 
 export interface Message {
   id: string;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant' | 'system' | 'error';
   playerId: string; // 'human' or AI player ID
   playerName?: string;
   content: string;

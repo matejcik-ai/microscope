@@ -146,16 +146,17 @@ export default function ConversationView({
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
+  const isError = message.role === 'error';
 
   return (
     <div style={{
       display: 'flex',
       flexDirection: 'column',
       alignItems: isUser ? 'flex-end' : 'flex-start',
-      maxWidth: isSystem ? '100%' : '80%',
+      maxWidth: (isSystem || isError) ? '100%' : '80%',
       alignSelf: isUser ? 'flex-end' : 'flex-start',
     }}>
-      {!isSystem && (
+      {!isSystem && !isError && (
         <div style={{
           fontSize: '0.75rem',
           color: '#666',
@@ -166,14 +167,25 @@ function MessageBubble({ message }: { message: Message }) {
           {message.playerName || (isUser ? 'You' : 'AI')}
         </div>
       )}
+      {isError && (
+        <div style={{
+          fontSize: '0.75rem',
+          color: '#d32f2f',
+          marginBottom: '0.25rem',
+          paddingLeft: '0.5rem',
+          fontWeight: 'bold',
+        }}>
+          ⚠️ ERROR
+        </div>
+      )}
       <div style={{
-        padding: isSystem ? '0.5rem' : '0.75rem 1rem',
-        background: isSystem ? 'transparent' : isUser ? '#1976d2' : '#f0f0f0',
-        color: isSystem ? '#666' : isUser ? 'white' : '#000',
+        padding: isSystem ? '0.5rem' : isError ? '1rem' : '0.75rem 1rem',
+        background: isSystem ? 'transparent' : isError ? '#ffebee' : isUser ? '#1976d2' : '#f0f0f0',
+        color: isSystem ? '#666' : isError ? '#c62828' : isUser ? 'white' : '#000',
         borderRadius: '8px',
         fontStyle: isSystem ? 'italic' : 'normal',
         fontSize: isSystem ? '0.875rem' : '1rem',
-        border: isSystem ? '1px dashed #ddd' : 'none',
+        border: isSystem ? '1px dashed #ddd' : isError ? '2px solid #ef5350' : 'none',
         width: '100%',
         whiteSpace: 'pre-wrap',
         wordBreak: 'break-word',

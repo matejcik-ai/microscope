@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { GameState, Period, Event, Message, Conversation, APISettings } from './types';
-import { saveGameState, loadGameState } from './storage';
+import { saveGameState, loadGameState, getCurrentGameId, setCurrentGameId, createNewGame as createNewGameMetadata } from './storage';
 
-function createEmptyGameState(): GameState {
+function createEmptyGameState(gameId: string): GameState {
   const metaConversationId = crypto.randomUUID();
 
   return {
-    id: crypto.randomUUID(),
+    id: gameId,
     setup: {
       bigPicture: '',
       bookends: {
@@ -40,23 +40,50 @@ function createEmptyGameState(): GameState {
   };
 }
 
-export function useGameState() {
+export function useGameState(initialGameId?: string) {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [currentGameId, setCurrentGameIdState] = useState<string | null>(null);
+
+  // Load game from localStorage
+  const loadGame = useCallback((gameId: string) => {
+    const loaded = loadGameState(gameId);
+    if (loaded) {
+      setGameState(loaded);
+      setCurrentGameIdState(gameId);
+      setCurrentGameId(gameId);
+    }
+  }, []);
 
   // Load from localStorage on mount
   useEffect(() => {
-    const loaded = loadGameState();
-    if (loaded) {
-      setGameState(loaded);
+    const gameId = initialGameId || getCurrentGameId();
+
+    if (gameId) {
+      const loaded = loadGameState(gameId);
+      if (loaded) {
+        setGameState(loaded);
+        setCurrentGameIdState(gameId);
+      } else {
+        // Game ID exists but no data - create new
+        const metadata = createNewGameMetadata('New Game');
+        const newGame = createEmptyGameState(metadata.id);
+        setGameState(newGame);
+        setCurrentGameIdState(metadata.id);
+        setCurrentGameId(metadata.id);
+        saveGameState(newGame);
+      }
     } else {
-      // Create new game
-      const newGame = createEmptyGameState();
+      // No current game - create first game
+      const metadata = createNewGameMetadata('My First Game');
+      const newGame = createEmptyGameState(metadata.id);
       setGameState(newGame);
+      setCurrentGameIdState(metadata.id);
+      setCurrentGameId(metadata.id);
       saveGameState(newGame);
     }
     setIsLoaded(true);
-  }, []);
+  }, [initialGameId]);
 
   // Save to localStorage whenever state changes
   useEffect(() => {
@@ -193,14 +220,29 @@ export function useGameState() {
   }, []);
 
   const reset = useCallback(() => {
-    const newGame = createEmptyGameState();
+    if (!currentGameId) return;
+    const newGame = createEmptyGameState(currentGameId);
     setGameState(newGame);
+    saveGameState(newGame);
+  }, [currentGameId]);
+
+  const switchGame = useCallback((gameId: string) => {
+    loadGame(gameId);
+  }, [loadGame]);
+
+  const createNewGame = useCallback((name: string) => {
+    const metadata = createNewGameMetadata(name);
+    const newGame = createEmptyGameState(metadata.id);
+    setGameState(newGame);
+    setCurrentGameIdState(metadata.id);
+    setCurrentGameId(metadata.id);
     saveGameState(newGame);
   }, []);
 
   return {
     gameState,
     isLoaded,
+    currentGameId,
     addPeriod,
     addEvent,
     addMessage,
@@ -208,5 +250,8 @@ export function useGameState() {
     getSelectedConversation,
     setAPISettings,
     reset,
+    switchGame,
+    createNewGame,
+    loadGame,
   };
 }
