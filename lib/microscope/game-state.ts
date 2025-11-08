@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { GameState, Period, Event, Message, Conversation } from './types';
+import type { GameState, Period, Event, Message, Conversation, APISettings } from './types';
 import { saveGameState, loadGameState } from './storage';
 
 function createEmptyGameState(): GameState {
@@ -181,6 +181,17 @@ export function useGameState() {
     return null;
   }, [gameState]);
 
+  const setAPISettings = useCallback((settings: APISettings) => {
+    setGameState((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        apiSettings: settings,
+      };
+    });
+  }, []);
+
   const reset = useCallback(() => {
     const newGame = createEmptyGameState();
     setGameState(newGame);
@@ -195,6 +206,7 @@ export function useGameState() {
     addMessage,
     setSelection,
     getSelectedConversation,
+    setAPISettings,
     reset,
   };
 }

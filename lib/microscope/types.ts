@@ -66,9 +66,16 @@ export interface GameSetup {
   };
 }
 
+export interface APISettings {
+  provider: 'claude' | 'openai';
+  apiKey: string;
+  model?: string;
+}
+
 export interface GameState {
   id: string;
   setup: GameSetup;
+  apiSettings?: APISettings; // User's API configuration
   periods: Period[];
   events: Event[];
   scenes: Scene[];

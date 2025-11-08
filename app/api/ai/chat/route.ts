@@ -4,7 +4,7 @@ import type { AIMessage } from '@/lib/ai';
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, gameContext } = await request.json();
+    const { messages, gameContext, apiSettings } = await request.json();
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -13,17 +13,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
+    if (!apiSettings?.apiKey) {
       return NextResponse.json(
-        { error: 'ANTHROPIC_API_KEY environment variable is not set' },
-        { status: 500 }
+        { error: 'API key is required' },
+        { status: 400 }
       );
     }
 
     const provider = createAIProvider({
-      provider: 'claude',
-      apiKey,
+      provider: apiSettings.provider || 'claude',
+      apiKey: apiSettings.apiKey,
+      model: apiSettings.model,
     });
 
     // Build context-aware system message

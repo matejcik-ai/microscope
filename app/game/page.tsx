@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useGameState } from '@/lib/microscope/game-state';
 import Timeline from './components/Timeline';
 import ConversationView from './components/Conversation';
+import APISettingsModal from './components/APISettingsModal';
+import type { APISettings } from '@/lib/microscope/types';
 
 export default function GamePage() {
   const {
@@ -14,10 +16,12 @@ export default function GamePage() {
     addMessage,
     setSelection,
     getSelectedConversation,
+    setAPISettings,
   } = useGameState();
 
   const [isLoading, setIsLoading] = useState(false);
   const [showAddPeriod, setShowAddPeriod] = useState(false);
+  const [showAPISettings, setShowAPISettings] = useState(false);
 
   if (!isLoaded || !gameState) {
     return (
@@ -34,6 +38,12 @@ export default function GamePage() {
 
   const handleSendMessage = async (content: string) => {
     if (!gameState.currentSelection) return;
+
+    // Check if API key is set
+    if (!gameState.apiSettings?.apiKey) {
+      setShowAPISettings(true);
+      return;
+    }
 
     const conversationId = getConversationId();
     if (!conversationId) return;
@@ -69,7 +79,11 @@ export default function GamePage() {
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages, gameContext }),
+        body: JSON.stringify({
+          messages,
+          gameContext,
+          apiSettings: gameState.apiSettings,
+        }),
       });
 
       if (!response.ok) {
@@ -136,6 +150,11 @@ export default function GamePage() {
     }
   };
 
+  const handleSaveAPISettings = (settings: APISettings) => {
+    setAPISettings(settings);
+    setShowAPISettings(false);
+  };
+
   const getConversationId = (): string | null => {
     if (!gameState.currentSelection) return null;
 
@@ -199,20 +218,37 @@ export default function GamePage() {
         <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
           Microscope RPG
         </h1>
-        <button
-          onClick={() => setShowAddPeriod(true)}
-          style={{
-            padding: '0.5rem 1rem',
-            background: 'white',
-            color: '#1976d2',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: '600',
-          }}
-        >
-          + Add Period
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            onClick={() => setShowAPISettings(true)}
+            style={{
+              padding: '0.5rem 1rem',
+              background: gameState.apiSettings?.apiKey ? 'rgba(255,255,255,0.2)' : '#ff9800',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: '600',
+            }}
+            title={gameState.apiSettings?.apiKey ? 'Change API Settings' : 'Set API Key (Required)'}
+          >
+            {gameState.apiSettings?.apiKey ? '⚙️ API' : '⚠️ Set API Key'}
+          </button>
+          <button
+            onClick={() => setShowAddPeriod(true)}
+            style={{
+              padding: '0.5rem 1rem',
+              background: 'white',
+              color: '#1976d2',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: '600',
+            }}
+          >
+            + Add Period
+          </button>
+        </div>
       </div>
 
       {/* Main Content */}
@@ -238,6 +274,16 @@ export default function GamePage() {
           isLoading={isLoading}
         />
       </div>
+
+      {/* API Settings Modal */}
+      {(showAPISettings || !gameState.apiSettings?.apiKey) && (
+        <APISettingsModal
+          currentSettings={gameState.apiSettings}
+          onSave={handleSaveAPISettings}
+          onClose={() => setShowAPISettings(false)}
+          canClose={!!gameState.apiSettings?.apiKey}
+        />
+      )}
 
       {/* Add Period Modal */}
       {showAddPeriod && (

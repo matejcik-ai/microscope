@@ -23,22 +23,15 @@ A web application for playing Microscope RPG with AI-powered co-players. Built w
    npm install
    ```
 
-2. **Set up environment variables:**
-   ```bash
-   cp .env.example .env.local
-   ```
-
-   Then edit `.env.local` and add your API key:
-   ```
-   ANTHROPIC_API_KEY=your_actual_api_key_here
-   ```
-
-3. **Run the development server:**
+2. **Run the development server:**
    ```bash
    npm run dev
    ```
 
-4. **Open [http://localhost:3000](http://localhost:3000)** in your browser.
+3. **Open [http://localhost:3000](http://localhost:3000)** in your browser.
+
+4. **Enter your API key:**
+   When you first use the app, you'll be prompted to enter your API key. It will be stored securely in your browser's localStorage.
 
 ## Deploying to Vercel
 
@@ -53,19 +46,14 @@ Make sure your code is pushed to a GitHub repository.
 3. Import your GitHub repository
 4. Vercel will auto-detect Next.js settings
 
-### Step 3: Set Environment Variables
-
-In the Vercel project settings:
-1. Go to "Settings" → "Environment Variables"
-2. Add `ANTHROPIC_API_KEY` with your API key
-3. Save the changes
-
-### Step 4: Deploy
+### Step 3: Deploy
 
 Click "Deploy" and Vercel will build and deploy your app. You'll get a URL like:
 ```
 https://your-project.vercel.app
 ```
+
+**Note:** No environment variables are required! Users will enter their API keys directly in the app, which are stored in their browser's localStorage.
 
 ### Automatic Deployments
 
@@ -116,21 +104,25 @@ microscope/
 └── next.config.mjs
 ```
 
-## Testing the AI Integration
+## How It Works
 
-Once deployed, you can test the AI endpoint:
+### API Key Storage
 
-```bash
-curl -X POST https://your-app.vercel.app/api/test-ai \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Hello, AI!"}'
-```
+API keys are stored locally in your browser's localStorage, not on any server. This means:
+- ✅ Your API key never leaves your browser
+- ✅ No server-side storage or database needed
+- ✅ Each user brings their own API key
+- ✅ Easy deployment - no environment variables required
 
-## Environment Variables
+You can change your API key anytime by clicking the "⚙️ API" button in the top navigation.
+
+## Environment Variables (Optional)
+
+The app works without any environment variables! However, if you're developing and prefer to use environment variables instead of the UI:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ANTHROPIC_API_KEY` | Yes | Your Anthropic API key for Claude |
+| `ANTHROPIC_API_KEY` | No | Your Anthropic API key for Claude (optional - can be set in UI) |
 | `OPENAI_API_KEY` | No | Your OpenAI API key (for future use) |
 
 ## Tech Stack
