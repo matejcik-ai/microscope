@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Build messages with prompt caching structure
-    const aiMessages = buildCachedMessages(messages, gameState, gameContext);
+    const aiMessages = buildCachedMessages(messages, gameState, gameContext, apiSettings.model);
 
     const response = await provider.generateResponse(aiMessages, {
       temperature: 1.0,
@@ -59,6 +59,26 @@ export async function POST(request: NextRequest) {
 }
 
 /**
+ * Check if a model supports prompt caching
+ */
+function supportsPromptCaching(model?: string): boolean {
+  if (!model) return false;
+
+  // Models that support prompt caching
+  const cachingSupportedModels = [
+    'claude-3-5-sonnet',
+    'claude-3-5-haiku',
+    'claude-3-7-sonnet',
+    'claude-3-opus',
+    'claude-3-haiku',
+    'claude-sonnet-4',
+    'claude-opus-4',
+  ];
+
+  return cachingSupportedModels.some(supported => model.startsWith(supported));
+}
+
+/**
  * Build messages with prompt caching structure for optimal performance
  *
  * Structure:
@@ -75,9 +95,11 @@ function buildCachedMessages(
     bookends?: { start: string; end: string };
     palette?: { yes: string[]; no: string[] };
     currentContext?: string;
-  }
+  },
+  model?: string
 ): AIMessage[] {
   const messages: AIMessage[] = [];
+  const useCaching = supportsPromptCaching(model);
 
   // CACHE BLOCK 1: Game rules and instructions (stable, rarely changes)
   const rulesMessage = `You are an AI co-player in a game of Microscope RPG, a collaborative timeline-building game where players create a vast history together.
@@ -110,7 +132,7 @@ You have access to the complete game state below, including all conversations fr
   messages.push({
     role: 'system',
     content: rulesMessage,
-    cache_control: { type: 'ephemeral' },
+    ...(useCaching ? { cache_control: { type: 'ephemeral' } } : {}),
   });
 
   // CACHE BLOCK 2: Complete game state (changes when timeline updates)
@@ -119,7 +141,7 @@ You have access to the complete game state below, including all conversations fr
     messages.push({
       role: 'system',
       content: fullGameState,
-      cache_control: { type: 'ephemeral' },
+      ...(useCaching ? { cache_control: { type: 'ephemeral' } } : {}),
     });
   }
 
@@ -131,7 +153,7 @@ You have access to the complete game state below, including all conversations fr
       messages.push({
         role: msg.role,
         content: msg.content,
-        ...(isLastMessage ? { cache_control: { type: 'ephemeral' } } : {}),
+        ...(useCaching && isLastMessage ? { cache_control: { type: 'ephemeral' } } : {}),
       });
     });
   }

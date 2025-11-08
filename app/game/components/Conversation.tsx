@@ -18,6 +18,7 @@ export default function ConversationView({
 }: ConversationProps) {
   const [input, setInput] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [enterToSend, setEnterToSend] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -43,8 +44,13 @@ export default function ConversationView({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Submit on Enter (without Shift)
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // In fullscreen, never submit on Enter (always new line)
+    if (isFullscreen) {
+      return;
+    }
+
+    // Submit on Enter only if enterToSend is checked
+    if (e.key === 'Enter' && enterToSend && !e.shiftKey) {
       e.preventDefault();
       if (input.trim() && !isLoading) {
         onSendMessage(input.trim());
@@ -127,17 +133,18 @@ export default function ConversationView({
         borderTop: '1px solid #e0e0e0',
         background: '#fafafa',
       }}>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+        {/* Textarea - full width on mobile */}
+        <div style={{ marginBottom: '0.5rem' }}>
           <textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
+            placeholder={enterToSend ? "Type your message... (Enter to send, Shift+Enter for new line)" : "Type your message..."}
             disabled={isLoading}
             rows={1}
             style={{
-              flex: 1,
+              width: '100%',
               padding: '0.75rem',
               border: '1px solid #ddd',
               borderRadius: '4px',
@@ -147,31 +154,54 @@ export default function ConversationView({
               maxHeight: isFullscreen ? 'none' : '200px',
               overflow: 'auto',
               fontFamily: 'inherit',
+              boxSizing: 'border-box',
             }}
           />
+        </div>
+
+        {/* Controls row */}
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {!isFullscreen && (
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              fontSize: '0.875rem',
+              color: '#666',
+              cursor: 'pointer',
+              userSelect: 'none',
+            }}>
+              <input
+                type="checkbox"
+                checked={enterToSend}
+                onChange={(e) => setEnterToSend(e.target.checked)}
+                style={{ cursor: 'pointer' }}
+              />
+              Enter to send
+            </label>
+          )}
+          <div style={{ flex: 1 }} />
           <button
             type="button"
             onClick={() => setIsFullscreen(!isFullscreen)}
             style={{
-              padding: '0.75rem',
-              background: isFullscreen ? '#1976d2' : '#f0f0f0',
-              color: isFullscreen ? 'white' : '#333',
+              padding: '0.5rem 0.75rem',
+              background: '#f0f0f0',
+              color: '#333',
               border: '1px solid #ddd',
               borderRadius: '4px',
               cursor: 'pointer',
-              fontSize: '1.25rem',
-              minWidth: '44px',
-              height: '44px',
+              fontSize: '0.875rem',
             }}
-            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen editor'}
+            title="Fullscreen editor"
           >
-            {isFullscreen ? '⤓' : '⤢'}
+            ⤢ Fullscreen
           </button>
           <button
             type="submit"
             disabled={!input.trim() || isLoading}
             style={{
-              padding: '0.75rem 1.5rem',
+              padding: '0.5rem 1.5rem',
               background: input.trim() && !isLoading ? '#1976d2' : '#ccc',
               color: 'white',
               border: 'none',
@@ -179,7 +209,6 @@ export default function ConversationView({
               cursor: input.trim() && !isLoading ? 'pointer' : 'not-allowed',
               fontSize: '1rem',
               fontWeight: '500',
-              minHeight: '44px',
             }}
           >
             Send
@@ -248,7 +277,7 @@ export default function ConversationView({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
+              placeholder="Type your message... (Enter for new line)"
               disabled={isLoading}
               autoFocus
               style={{
