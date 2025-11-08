@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useGameState } from '@/lib/microscope/game-state';
 import { saveAPISettings, loadAPISettings } from '@/lib/microscope/storage';
+import { parseAIResponse } from '@/lib/microscope/command-parser';
 import Timeline from './components/Timeline';
 import ConversationView from './components/Conversation';
 import APISettingsModal from './components/APISettingsModal';
@@ -16,6 +17,9 @@ export default function GamePage() {
     isLoaded,
     currentGameId,
     addPeriod,
+    addPaletteItem,
+    findPeriodByTitle,
+    findEventByTitle,
     addEvent,
     addMessage,
     addMessageWithId,
@@ -54,6 +58,107 @@ export default function GamePage() {
       </div>
     );
   }
+
+  const handleAICommand = async (parsed: any, currentConversationId: string) => {
+    const metaConversationId = gameState.metaConversationId;
+
+    switch (parsed.type) {
+      case 'create-period':
+      case 'create-bookend-period': {
+        const { title, tone, description } = parsed.data;
+        const isBookend = parsed.type === 'create-bookend-period';
+
+        // Create the period
+        addPeriod(title, description, tone);
+
+        // Find the created period (it was just added)
+        setTimeout(() => {
+          const period = findPeriodByTitle(title);
+          if (!period) return;
+
+          // Add system notification to meta chat
+          const notificationText = isBookend
+            ? `Created bookend period: ${title}`
+            : `Created period: ${title}`;
+
+          addMessage(metaConversationId, {
+            role: 'system',
+            playerId: 'system',
+            content: notificationText,
+          });
+
+          // For non-bookend periods, teleport remaining message to period's conversation
+          if (!isBookend && parsed.remainingMessage) {
+            addMessage(period.conversationId, {
+              role: 'assistant',
+              playerId: 'ai-1',
+              playerName: 'AI Player',
+              content: parsed.remainingMessage,
+            });
+          }
+        }, 100);
+        break;
+      }
+
+      case 'create-event': {
+        const { title, tone, periodTitle } = parsed.data;
+        const period = findPeriodByTitle(periodTitle);
+
+        if (!period) {
+          // Period not found - add error to current conversation
+          addMessage(currentConversationId, {
+            role: 'error',
+            playerId: 'system',
+            content: `Cannot create event: Period "${periodTitle}" not found`,
+          });
+          return;
+        }
+
+        // Create the event
+        addEvent(period.id, title, '', tone);
+
+        // Find the created event
+        setTimeout(() => {
+          const event = findEventByTitle(title);
+          if (!event) return;
+
+          // Add system notification to meta chat
+          addMessage(metaConversationId, {
+            role: 'system',
+            playerId: 'system',
+            content: `Created event: ${title} (in ${periodTitle})`,
+          });
+
+          // Teleport remaining message to event's conversation
+          if (parsed.remainingMessage) {
+            addMessage(event.conversationId, {
+              role: 'assistant',
+              playerId: 'ai-1',
+              playerName: 'AI Player',
+              content: parsed.remainingMessage,
+            });
+          }
+        }, 100);
+        break;
+      }
+
+      case 'add-palette': {
+        const { category, item } = parsed.data;
+        addPaletteItem(category, item);
+
+        // Add confirmation to current conversation
+        addMessage(currentConversationId, {
+          role: 'system',
+          playerId: 'system',
+          content: `Added to palette (${category}): ${item}`,
+        });
+        break;
+      }
+
+      default:
+        break;
+    }
+  };
 
   const handleSendMessage = async (content: string) => {
     if (!gameState.currentSelection) return;
@@ -131,13 +236,21 @@ export default function GamePage() {
       // SUCCESS: Update pending message to non-pending
       updateMessage(conversationId, pendingMessageId, { pending: false });
 
-      // Add AI response
-      addMessage(conversationId, {
-        role: 'assistant',
-        playerId: 'ai-1',
-        playerName: 'AI Player',
-        content: data.response,
-      });
+      // Parse AI response for commands
+      const parsed = parseAIResponse(data.response);
+
+      // Handle commands
+      if (parsed.type !== 'none') {
+        await handleAICommand(parsed, conversationId);
+      } else {
+        // No command - add normal AI response
+        addMessage(conversationId, {
+          role: 'assistant',
+          playerId: 'ai-1',
+          playerName: 'AI Player',
+          content: data.response,
+        });
+      }
     } catch (error: any) {
       console.error('Failed to get AI response:', error);
       const errorMessage = error?.message || 'Unknown error occurred';
