@@ -355,6 +355,7 @@ function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const isError = message.role === 'error';
+  const isPending = message.pending || false;
 
   return (
     <div style={{
@@ -363,6 +364,7 @@ function MessageBubble({ message }: { message: Message }) {
       alignItems: isUser ? 'flex-end' : 'flex-start',
       maxWidth: (isSystem || isError) ? '100%' : '80%',
       alignSelf: isUser ? 'flex-end' : 'flex-start',
+      opacity: isPending ? 0.6 : 1,
     }}>
       {!isSystem && !isError && (
         <div style={{
@@ -373,6 +375,7 @@ function MessageBubble({ message }: { message: Message }) {
           paddingRight: '0.5rem',
         }}>
           {message.playerName || (isUser ? 'You' : 'AI')}
+          {isPending && <span style={{ marginLeft: '0.5rem', fontStyle: 'italic' }}>(pending...)</span>}
         </div>
       )}
       {isError && (

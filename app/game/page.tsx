@@ -18,6 +18,9 @@ export default function GamePage() {
     addPeriod,
     addEvent,
     addMessage,
+    addMessageWithId,
+    updateMessage,
+    removeMessage,
     setSelection,
     getSelectedConversation,
     switchGame,
@@ -67,14 +70,33 @@ export default function GamePage() {
     const conversationId = getConversationId();
     if (!conversationId) return;
 
-    // Call AI to get response (DON'T add user message yet)
+    // Add message as PENDING immediately (visible in UI)
+    const pendingMessageId = crypto.randomUUID();
+    const pendingMessage = {
+      id: pendingMessageId,
+      role: 'user' as const,
+      playerId: 'human',
+      playerName: 'You',
+      content,
+      timestamp: Date.now(),
+      pending: true,
+    };
+
+    // Add pending message to conversation
+    addMessageWithId(conversationId, pendingMessage);
     setIsLoading(true);
+
+    const conversation = gameState.conversations[conversationId];
+    if (!conversation) return;
+
     try {
-      const conversation = gameState.conversations[conversationId];
-      const messages = conversation.messages.map(m => ({
-        role: m.role,
-        content: m.content,
-      }));
+      // Build messages for API (exclude pending flag)
+      const messages = conversation.messages
+        .filter(m => !m.pending) // Don't send pending messages
+        .map(m => ({
+          role: m.role,
+          content: m.content,
+        }));
 
       // Add the new user message to the context for API call
       messages.push({ role: 'user', content });
@@ -106,14 +128,10 @@ export default function GamePage() {
 
       const data = await response.json();
 
-      // SUCCESS: Add both user message and AI response
-      addMessage(conversationId, {
-        role: 'user',
-        playerId: 'human',
-        playerName: 'You',
-        content,
-      });
+      // SUCCESS: Update pending message to non-pending
+      updateMessage(conversationId, pendingMessageId, { pending: false });
 
+      // Add AI response
       addMessage(conversationId, {
         role: 'assistant',
         playerId: 'ai-1',
@@ -124,7 +142,10 @@ export default function GamePage() {
       console.error('Failed to get AI response:', error);
       const errorMessage = error?.message || 'Unknown error occurred';
 
-      // ERROR: Restore message to input field
+      // ERROR: Remove pending message
+      removeMessage(conversationId, pendingMessageId);
+
+      // Restore message to input field
       setRestoreContent(content);
 
       // Still add error message to conversation

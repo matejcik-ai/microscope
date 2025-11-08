@@ -95,13 +95,17 @@ export function useGameState(initialGameId?: string) {
     }
   }, [gameState, isLoaded]);
 
-  const addPeriod = useCallback((title: string, description: string, tone: 'light' | 'dark') => {
+  const addPeriod = useCallback((title: string, description: string, tone: 'light' | 'dark'): string | null => {
+    let createdId: string | null = null;
     setGameState((prev) => {
       if (!prev) return prev;
 
       const conversationId = crypto.randomUUID();
+      const periodId = crypto.randomUUID();
+      createdId = periodId;
+
       const period: Period = {
-        id: crypto.randomUUID(),
+        id: periodId,
         title,
         description,
         tone,
@@ -121,7 +125,41 @@ export function useGameState(initialGameId?: string) {
         },
       };
     });
+    return createdId;
   }, []);
+
+  const addPaletteItem = useCallback((category: 'yes' | 'no', item: string) => {
+    setGameState((prev) => {
+      if (!prev) return prev;
+
+      const newPalette = { ...prev.setup.palette };
+      if (!newPalette[category].includes(item)) {
+        newPalette[category] = [...newPalette[category], item];
+      }
+
+      return {
+        ...prev,
+        setup: {
+          ...prev.setup,
+          palette: newPalette,
+        },
+      };
+    });
+  }, []);
+
+  const findPeriodByTitle = useCallback((title: string): Period | null => {
+    if (!gameState) return null;
+    return gameState.periods.find(p =>
+      p.title.toLowerCase() === title.toLowerCase()
+    ) || null;
+  }, [gameState]);
+
+  const findEventByTitle = useCallback((title: string): Event | null => {
+    if (!gameState) return null;
+    return gameState.events.find(e =>
+      e.title.toLowerCase() === title.toLowerCase()
+    ) || null;
+  }, [gameState]);
 
   const addEvent = useCallback((periodId: string, title: string, description: string, tone: 'light' | 'dark') => {
     setGameState((prev) => {
@@ -172,6 +210,68 @@ export function useGameState(initialGameId?: string) {
           [conversationId]: {
             ...conversation,
             messages: [...conversation.messages, newMessage],
+          },
+        },
+      };
+    });
+  }, []);
+
+  const addMessageWithId = useCallback((conversationId: string, message: Message) => {
+    setGameState((prev) => {
+      if (!prev) return prev;
+
+      const conversation = prev.conversations[conversationId];
+      if (!conversation) return prev;
+
+      return {
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          [conversationId]: {
+            ...conversation,
+            messages: [...conversation.messages, message],
+          },
+        },
+      };
+    });
+  }, []);
+
+  const updateMessage = useCallback((conversationId: string, messageId: string, updates: Partial<Message>) => {
+    setGameState((prev) => {
+      if (!prev) return prev;
+
+      const conversation = prev.conversations[conversationId];
+      if (!conversation) return prev;
+
+      return {
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          [conversationId]: {
+            ...conversation,
+            messages: conversation.messages.map(msg =>
+              msg.id === messageId ? { ...msg, ...updates } : msg
+            ),
+          },
+        },
+      };
+    });
+  }, []);
+
+  const removeMessage = useCallback((conversationId: string, messageId: string) => {
+    setGameState((prev) => {
+      if (!prev) return prev;
+
+      const conversation = prev.conversations[conversationId];
+      if (!conversation) return prev;
+
+      return {
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          [conversationId]: {
+            ...conversation,
+            messages: conversation.messages.filter(msg => msg.id !== messageId),
           },
         },
       };
@@ -237,8 +337,14 @@ export function useGameState(initialGameId?: string) {
     isLoaded,
     currentGameId,
     addPeriod,
+    addPaletteItem,
+    findPeriodByTitle,
+    findEventByTitle,
     addEvent,
     addMessage,
+    addMessageWithId,
+    updateMessage,
+    removeMessage,
     setSelection,
     getSelectedConversation,
     reset,

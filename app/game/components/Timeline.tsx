@@ -49,6 +49,48 @@ export default function Timeline({ gameState, onSelect, selectedId, selectedType
         </div>
       </div>
 
+      {/* Palette Display */}
+      {(gameState.setup.palette.yes.length > 0 || gameState.setup.palette.no.length > 0) && (
+        <div style={{
+          marginTop: '1rem',
+          marginBottom: '1rem',
+          padding: '0.75rem',
+          background: '#fafafa',
+          borderRadius: '4px',
+          border: '1px solid #e0e0e0',
+        }}>
+          <h3 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+            Palette
+          </h3>
+
+          {gameState.setup.palette.yes.length > 0 && (
+            <div style={{ marginBottom: '0.5rem' }}>
+              <div style={{ fontSize: '0.75rem', color: '#4caf50', fontWeight: '600', marginBottom: '0.25rem' }}>
+                ✓ Yes (include):
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.75rem', color: '#333' }}>
+                {gameState.setup.palette.yes.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {gameState.setup.palette.no.length > 0 && (
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#f44336', fontWeight: '600', marginBottom: '0.25rem' }}>
+                ✗ No (exclude):
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.75rem', color: '#333' }}>
+                {gameState.setup.palette.no.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Periods and Events */}
       <div style={{ marginTop: '1.5rem' }}>
         <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.5rem' }}>

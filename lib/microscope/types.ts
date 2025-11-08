@@ -12,6 +12,7 @@ export interface Message {
   playerName?: string;
   content: string;
   timestamp: number;
+  pending?: boolean; // True while waiting for AI response
 }
 
 export interface Conversation {
