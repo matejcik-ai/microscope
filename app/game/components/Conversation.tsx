@@ -7,6 +7,7 @@ interface ConversationProps {
   conversation: Conversation | null;
   title: string;
   onSendMessage: (content: string) => void;
+  restoreContent?: string | null;
   isLoading?: boolean;
 }
 
@@ -14,6 +15,7 @@ export default function ConversationView({
   conversation,
   title,
   onSendMessage,
+  restoreContent = null,
   isLoading = false,
 }: ConversationProps) {
   const [input, setInput] = useState('');
@@ -34,6 +36,13 @@ export default function ConversationView({
       textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
     }
   }, [input, isFullscreen]);
+
+  // Restore content to input field when error occurs
+  useEffect(() => {
+    if (restoreContent) {
+      setInput(restoreContent);
+    }
+  }, [restoreContent]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

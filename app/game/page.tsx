@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameState } from '@/lib/microscope/game-state';
+import { saveAPISettings, loadAPISettings } from '@/lib/microscope/storage';
 import Timeline from './components/Timeline';
 import ConversationView from './components/Conversation';
 import APISettingsModal from './components/APISettingsModal';
@@ -19,7 +20,6 @@ export default function GamePage() {
     addMessage,
     setSelection,
     getSelectedConversation,
-    setAPISettings,
     switchGame,
     createNewGame,
   } = useGameState();
@@ -30,6 +30,14 @@ export default function GamePage() {
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [showDebugConsole, setShowDebugConsole] = useState(false);
   const [showGameSwitcher, setShowGameSwitcher] = useState(false);
+  const [restoreContent, setRestoreContent] = useState<string | null>(null);
+  const [apiSettings, setApiSettings] = useState<APISettings | null>(null);
+
+  // Load global API settings on mount
+  useEffect(() => {
+    const loaded = loadAPISettings();
+    setApiSettings(loaded);
+  }, []);
 
   if (!isLoaded || !gameState) {
     return (
@@ -47,8 +55,11 @@ export default function GamePage() {
   const handleSendMessage = async (content: string) => {
     if (!gameState.currentSelection) return;
 
+    // Clear any previous restore content
+    setRestoreContent(null);
+
     // Check if API key is set
-    if (!gameState.apiSettings?.apiKey) {
+    if (!apiSettings?.apiKey) {
       setShowAPISettings(true);
       return;
     }
@@ -56,15 +67,7 @@ export default function GamePage() {
     const conversationId = getConversationId();
     if (!conversationId) return;
 
-    // Add user message
-    addMessage(conversationId, {
-      role: 'user',
-      playerId: 'human',
-      playerName: 'You',
-      content,
-    });
-
-    // Call AI to get response
+    // Call AI to get response (DON'T add user message yet)
     setIsLoading(true);
     try {
       const conversation = gameState.conversations[conversationId];
@@ -73,7 +76,7 @@ export default function GamePage() {
         content: m.content,
       }));
 
-      // Add the new user message to the context
+      // Add the new user message to the context for API call
       messages.push({ role: 'user', content });
 
       // Build game context
@@ -91,7 +94,7 @@ export default function GamePage() {
           messages,
           gameState, // Full game state for prompt caching
           gameContext,
-          apiSettings: gameState.apiSettings,
+          apiSettings: apiSettings,
         }),
       });
 
@@ -103,6 +106,14 @@ export default function GamePage() {
 
       const data = await response.json();
 
+      // SUCCESS: Add both user message and AI response
+      addMessage(conversationId, {
+        role: 'user',
+        playerId: 'human',
+        playerName: 'You',
+        content,
+      });
+
       addMessage(conversationId, {
         role: 'assistant',
         playerId: 'ai-1',
@@ -112,6 +123,11 @@ export default function GamePage() {
     } catch (error: any) {
       console.error('Failed to get AI response:', error);
       const errorMessage = error?.message || 'Unknown error occurred';
+
+      // ERROR: Restore message to input field
+      setRestoreContent(content);
+
+      // Still add error message to conversation
       addMessage(conversationId, {
         role: 'error',
         playerId: 'system',
@@ -163,7 +179,8 @@ export default function GamePage() {
   };
 
   const handleSaveAPISettings = (settings: APISettings) => {
-    setAPISettings(settings);
+    setApiSettings(settings);
+    saveAPISettings(settings);
     setShowAPISettings(false);
   };
 
@@ -287,16 +304,16 @@ export default function GamePage() {
             onClick={() => setShowAPISettings(true)}
             style={{
               padding: '0.5rem 1rem',
-              background: gameState.apiSettings?.apiKey ? 'rgba(255,255,255,0.2)' : '#ff9800',
+              background: apiSettings?.apiKey ? 'rgba(255,255,255,0.2)' : '#ff9800',
               color: 'white',
               border: 'none',
               borderRadius: '4px',
               cursor: 'pointer',
               fontWeight: '600',
             }}
-            title={gameState.apiSettings?.apiKey ? 'Change API Settings' : 'Set API Key (Required)'}
+            title={apiSettings?.apiKey ? 'Change API Settings' : 'Set API Key (Required)'}
           >
-            {gameState.apiSettings?.apiKey ? '⚙️' : '⚠️'}
+            {apiSettings?.apiKey ? '⚙️' : '⚠️'}
           </button>
           <button
             onClick={() => setShowAddPeriod(true)}
@@ -373,18 +390,19 @@ export default function GamePage() {
             conversation={getSelectedConversation()}
             title={getTitle()}
             onSendMessage={handleSendMessage}
+            restoreContent={restoreContent}
             isLoading={isLoading}
           />
         </div>
       </div>
 
       {/* API Settings Modal */}
-      {(showAPISettings || !gameState.apiSettings?.apiKey) && (
+      {(showAPISettings || !apiSettings?.apiKey) && (
         <APISettingsModal
-          currentSettings={gameState.apiSettings}
+          currentSettings={apiSettings}
           onSave={handleSaveAPISettings}
           onClose={() => setShowAPISettings(false)}
-          canClose={!!gameState.apiSettings?.apiKey}
+          canClose={!!apiSettings?.apiKey}
         />
       )}
 

@@ -75,7 +75,6 @@ export interface APISettings {
 export interface GameState {
   id: string;
   setup: GameSetup;
-  apiSettings?: APISettings; // User's API configuration
   periods: Period[];
   events: Event[];
   scenes: Scene[];

@@ -30,13 +30,30 @@ export class ClaudeProvider implements AIProvider {
       : undefined;
 
     // Handle conversation messages with cache_control support
+    // Note: When using cache_control, content must be an array of blocks
     const conversationMessages = messages
       .filter(m => m.role !== 'system')
-      .map(m => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-        ...(m.cache_control ? { cache_control: m.cache_control } : {}),
-      }));
+      .map(m => {
+        if (m.cache_control) {
+          // Use content block format when cache_control is present
+          return {
+            role: m.role as 'user' | 'assistant',
+            content: [
+              {
+                type: 'text' as const,
+                text: m.content,
+                cache_control: m.cache_control,
+              }
+            ],
+          };
+        } else {
+          // Use simple string format when no cache_control
+          return {
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+          };
+        }
+      });
 
     const response = await this.client.messages.create({
       model: config?.model || this.defaultModel,
@@ -66,13 +83,30 @@ export class ClaudeProvider implements AIProvider {
       : undefined;
 
     // Handle conversation messages with cache_control support
+    // Note: When using cache_control, content must be an array of blocks
     const conversationMessages = messages
       .filter(m => m.role !== 'system')
-      .map(m => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-        ...(m.cache_control ? { cache_control: m.cache_control } : {}),
-      }));
+      .map(m => {
+        if (m.cache_control) {
+          // Use content block format when cache_control is present
+          return {
+            role: m.role as 'user' | 'assistant',
+            content: [
+              {
+                type: 'text' as const,
+                text: m.content,
+                cache_control: m.cache_control,
+              }
+            ],
+          };
+        } else {
+          // Use simple string format when no cache_control
+          return {
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+          };
+        }
+      });
 
     const stream = await this.client.messages.create({
       model: config?.model || this.defaultModel,

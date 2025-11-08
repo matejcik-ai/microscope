@@ -2,11 +2,12 @@
  * LocalStorage utilities for game state persistence
  */
 
-import type { GameState } from './types';
+import type { GameState, APISettings } from './types';
 
 const GAMES_LIST_KEY = 'microscope-games-list';
 const CURRENT_GAME_KEY = 'microscope-current-game-id';
 const GAME_PREFIX = 'microscope-game-';
+const API_SETTINGS_KEY = 'microscope-api-settings'; // Global API settings
 const OLD_STORAGE_KEY = 'microscope-game-state'; // Legacy key for migration
 
 export interface GameMetadata {
@@ -144,6 +145,26 @@ export function importGameState(json: string): GameState {
   return JSON.parse(json);
 }
 
+// Global API Settings functions
+export function saveAPISettings(settings: APISettings): void {
+  try {
+    localStorage.setItem(API_SETTINGS_KEY, JSON.stringify(settings));
+  } catch (error) {
+    console.error('Failed to save API settings:', error);
+  }
+}
+
+export function loadAPISettings(): APISettings | null {
+  try {
+    const stored = localStorage.getItem(API_SETTINGS_KEY);
+    if (!stored) return null;
+    return JSON.parse(stored);
+  } catch (error) {
+    console.error('Failed to load API settings:', error);
+    return null;
+  }
+}
+
 /**
  * Migrate old single-game storage to new multi-game format
  * Called automatically when loading games
@@ -165,12 +186,18 @@ export function migrateOldStorage(): void {
     // Parse old game state
     const oldGameState: GameState = JSON.parse(oldData);
 
+    // Migrate API settings to global storage if they exist
+    if (oldGameState.apiSettings) {
+      saveAPISettings(oldGameState.apiSettings);
+    }
+
     // Create a new game ID if the old one doesn't have one
     const gameId = oldGameState.id || `game-${Date.now()}-migrated`;
 
-    // Update game state with proper ID
+    // Update game state with proper ID (remove apiSettings from game state)
+    const { apiSettings: _, ...gameStateWithoutApiSettings } = oldGameState;
     const migratedGameState: GameState = {
-      ...oldGameState,
+      ...gameStateWithoutApiSettings,
       id: gameId,
     };
 
