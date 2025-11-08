@@ -76,7 +76,7 @@ export default function GamePage() {
           const period = findPeriodByTitle(title);
           if (!period) return;
 
-          // Add system notification to meta chat
+          // Add system notification to meta chat with link
           const notificationText = isBookend
             ? `Created bookend period: ${title}`
             : `Created period: ${title}`;
@@ -85,6 +85,12 @@ export default function GamePage() {
             role: 'system',
             playerId: 'system',
             content: notificationText,
+            metadata: {
+              linkTo: {
+                type: 'period',
+                id: period.id,
+              },
+            },
           });
 
           // For non-bookend periods, teleport remaining message to period's conversation
@@ -122,11 +128,17 @@ export default function GamePage() {
           const event = findEventByTitle(title);
           if (!event) return;
 
-          // Add system notification to meta chat
+          // Add system notification to meta chat with link
           addMessage(metaConversationId, {
             role: 'system',
             playerId: 'system',
             content: `Created event: ${title} (in ${periodTitle})`,
+            metadata: {
+              linkTo: {
+                type: 'event',
+                id: event.id,
+              },
+            },
           });
 
           // Teleport remaining message to event's conversation
@@ -524,6 +536,7 @@ export default function GamePage() {
             conversation={getSelectedConversation()}
             title={getTitle()}
             onSendMessage={handleSendMessage}
+            onNavigateToObject={(type, id) => setSelection(type, id)}
             restoreContent={restoreContent}
             isLoading={isLoading}
           />

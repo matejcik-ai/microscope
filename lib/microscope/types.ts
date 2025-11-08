@@ -13,6 +13,12 @@ export interface Message {
   content: string;
   timestamp: number;
   pending?: boolean; // True while waiting for AI response
+  metadata?: {
+    linkTo?: {
+      type: 'period' | 'event' | 'scene';
+      id: string;
+    };
+  };
 }
 
 export interface Conversation {

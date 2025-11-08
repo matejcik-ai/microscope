@@ -7,6 +7,7 @@ interface ConversationProps {
   conversation: Conversation | null;
   title: string;
   onSendMessage: (content: string) => void;
+  onNavigateToObject?: (type: 'period' | 'event' | 'scene', id: string) => void;
   restoreContent?: string | null;
   isLoading?: boolean;
 }
@@ -15,6 +16,7 @@ export default function ConversationView({
   conversation,
   title,
   onSendMessage,
+  onNavigateToObject,
   restoreContent = null,
   isLoading = false,
 }: ConversationProps) {
@@ -117,7 +119,11 @@ export default function ConversationView({
           </div>
         ) : (
           conversation.messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
+            <MessageBubble
+              key={message.id}
+              message={message}
+              onNavigateToObject={onNavigateToObject}
+            />
           ))
         )}
 
@@ -351,11 +357,24 @@ export default function ConversationView({
   );
 }
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({
+  message,
+  onNavigateToObject,
+}: {
+  message: Message;
+  onNavigateToObject?: (type: 'period' | 'event' | 'scene', id: string) => void;
+}) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const isError = message.role === 'error';
   const isPending = message.pending || false;
+  const hasLink = message.metadata?.linkTo && onNavigateToObject;
+
+  const handleClick = () => {
+    if (hasLink) {
+      onNavigateToObject(message.metadata!.linkTo!.type, message.metadata!.linkTo!.id);
+    }
+  };
 
   return (
     <div style={{
@@ -389,18 +408,23 @@ function MessageBubble({ message }: { message: Message }) {
           ⚠️ ERROR
         </div>
       )}
-      <div style={{
-        padding: isSystem ? '0.5rem' : isError ? '1rem' : '0.75rem 1rem',
-        background: isSystem ? 'transparent' : isError ? '#ffebee' : isUser ? '#1976d2' : '#f0f0f0',
-        color: isSystem ? '#666' : isError ? '#c62828' : isUser ? 'white' : '#000',
-        borderRadius: '8px',
-        fontStyle: isSystem ? 'italic' : 'normal',
-        fontSize: isSystem ? '0.875rem' : '1rem',
-        border: isSystem ? '1px dashed #ddd' : isError ? '2px solid #ef5350' : 'none',
-        width: '100%',
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-word',
-      }}>
+      <div
+        onClick={hasLink ? handleClick : undefined}
+        style={{
+          padding: isSystem ? '0.5rem' : isError ? '1rem' : '0.75rem 1rem',
+          background: isSystem ? 'transparent' : isError ? '#ffebee' : isUser ? '#1976d2' : '#f0f0f0',
+          color: isSystem ? '#666' : isError ? '#c62828' : isUser ? 'white' : '#000',
+          borderRadius: '8px',
+          fontStyle: isSystem ? 'italic' : 'normal',
+          fontSize: isSystem ? '0.875rem' : '1rem',
+          border: isSystem ? '1px dashed #ddd' : isError ? '2px solid #ef5350' : 'none',
+          width: '100%',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          cursor: hasLink ? 'pointer' : 'default',
+          textDecoration: hasLink ? 'underline' : 'none',
+        }}
+      >
         {message.content}
       </div>
       <div style={{
