@@ -376,7 +376,7 @@ export default function GamePage() {
 
   return (
     <div style={{
-      height: '100vh',
+      height: '100dvh',
       width: '100vw',
       display: 'flex',
       flexDirection: 'column',
@@ -512,44 +512,43 @@ export default function GamePage() {
           {isTimelineOpen ? '✕' : '☰'}
         </button>
 
-        {/* Left: Timeline Sidebar (Overlay on Mobile) */}
+        {/* Left: Timeline Sidebar (Overlay) */}
         <div
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
             bottom: 0,
-            width: isTimelineOpen ? 'min(300px, 80vw)' : '0',
+            width: 'min(300px, 80vw)',
             background: 'white',
-            transition: 'width 0.3s ease-in-out',
+            transform: isTimelineOpen ? 'translateX(0)' : 'translateX(-100%)',
+            transition: 'transform 0.3s ease-in-out',
             zIndex: 1000,
-            boxShadow: isTimelineOpen ? '2px 0 8px rgba(0,0,0,0.2)' : 'none',
-            overflow: 'hidden',
+            boxShadow: '2px 0 8px rgba(0,0,0,0.2)',
             borderRight: '1px solid #e0e0e0',
+            overflow: 'hidden',
           }}
         >
           {/* Timeline Content */}
-          {isTimelineOpen && (
-            <div style={{
-              width: 'min(300px, 80vw)',
-              height: '100%',
-              overflow: 'hidden',
-              paddingTop: '70px', // Space for the close button
-            }}>
-              <Timeline
-                gameState={gameState}
-                onSelect={(type, id) => {
-                  setSelection(type, id);
-                  // On mobile, close sidebar after selection
-                  if (window.innerWidth < 768) {
-                    setIsTimelineOpen(false);
-                  }
-                }}
-                selectedId={gameState.currentSelection?.id}
-                selectedType={gameState.currentSelection?.type}
-              />
-            </div>
-          )}
+          <div style={{
+            width: '100%',
+            height: '100%',
+            overflow: 'hidden',
+            paddingTop: '70px', // Space for the hamburger button
+          }}>
+            <Timeline
+              gameState={gameState}
+              onSelect={(type, id) => {
+                setSelection(type, id);
+                // On mobile, close sidebar after selection
+                if (window.innerWidth < 768) {
+                  setIsTimelineOpen(false);
+                }
+              }}
+              selectedId={gameState.currentSelection?.id}
+              selectedType={gameState.currentSelection?.type}
+            />
+          </div>
         </div>
 
         {/* Right: Conversation (Full Width) */}
