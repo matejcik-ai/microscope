@@ -7,6 +7,7 @@ import type { GameState } from './types';
 const GAMES_LIST_KEY = 'microscope-games-list';
 const CURRENT_GAME_KEY = 'microscope-current-game-id';
 const GAME_PREFIX = 'microscope-game-';
+const OLD_STORAGE_KEY = 'microscope-game-state'; // Legacy key for migration
 
 export interface GameMetadata {
   id: string;
@@ -141,4 +142,57 @@ export function exportGameState(state: GameState): string {
 
 export function importGameState(json: string): GameState {
   return JSON.parse(json);
+}
+
+/**
+ * Migrate old single-game storage to new multi-game format
+ * Called automatically when loading games
+ */
+export function migrateOldStorage(): void {
+  try {
+    const oldData = localStorage.getItem(OLD_STORAGE_KEY);
+    if (!oldData) return; // Nothing to migrate
+
+    // Check if already migrated
+    const games = listGames();
+    if (games.length > 0) {
+      // Already have games in new format, don't migrate
+      // But clean up old key
+      localStorage.removeItem(OLD_STORAGE_KEY);
+      return;
+    }
+
+    // Parse old game state
+    const oldGameState: GameState = JSON.parse(oldData);
+
+    // Create a new game ID if the old one doesn't have one
+    const gameId = oldGameState.id || `game-${Date.now()}-migrated`;
+
+    // Update game state with proper ID
+    const migratedGameState: GameState = {
+      ...oldGameState,
+      id: gameId,
+    };
+
+    // Create metadata
+    const metadata: GameMetadata = {
+      id: gameId,
+      name: migratedGameState.setup.bigPicture || 'Migrated Game',
+      created: Date.now(),
+      lastPlayed: Date.now(),
+      bigPicture: migratedGameState.setup.bigPicture || '',
+    };
+
+    // Save to new format
+    localStorage.setItem(GAME_PREFIX + gameId, JSON.stringify(migratedGameState));
+    saveGamesList([metadata]);
+    setCurrentGameId(gameId);
+
+    // Remove old key
+    localStorage.removeItem(OLD_STORAGE_KEY);
+
+    console.log('Successfully migrated game from old storage format');
+  } catch (error) {
+    console.error('Failed to migrate old storage:', error);
+  }
 }

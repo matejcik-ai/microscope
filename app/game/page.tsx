@@ -89,6 +89,7 @@ export default function GamePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages,
+          gameState, // Full game state for prompt caching
           gameContext,
           apiSettings: gameState.apiSettings,
         }),

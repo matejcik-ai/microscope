@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAIProvider } from '@/lib/ai';
 import type { AIMessage } from '@/lib/ai';
+import { serializeGameState } from '@/lib/microscope/game-state-serializer';
+import type { GameState } from '@/lib/microscope/types';
 
 // Force this to run in Node.js runtime instead of Edge
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, gameContext, apiSettings } = await request.json();
+    const { messages, gameState, gameContext, apiSettings } = await request.json();
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -29,13 +31,8 @@ export async function POST(request: NextRequest) {
       model: apiSettings.model,
     });
 
-    // Build context-aware system message
-    const systemMessage = buildSystemMessage(gameContext);
-
-    const aiMessages: AIMessage[] = [
-      { role: 'system', content: systemMessage },
-      ...messages,
-    ];
+    // Build messages with prompt caching structure
+    const aiMessages = buildCachedMessages(messages, gameState, gameContext);
 
     const response = await provider.generateResponse(aiMessages, {
       temperature: 1.0,
@@ -61,13 +58,29 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function buildSystemMessage(gameContext?: {
-  bigPicture?: string;
-  bookends?: { start: string; end: string };
-  palette?: { yes: string[]; no: string[] };
-  currentContext?: string;
-}): string {
-  let message = `You are an AI co-player in a game of Microscope RPG, a collaborative timeline-building game where players create a vast history together.
+/**
+ * Build messages with prompt caching structure for optimal performance
+ *
+ * Structure:
+ * 1. System: Game rules (CACHED - rarely changes)
+ * 2. System: Full game state (CACHED - changes when timeline updates)
+ * 3. User/Assistant conversation history (last message CACHED)
+ * 4. New user message (UNCACHED)
+ */
+function buildCachedMessages(
+  conversationMessages: any[],
+  gameState: GameState | null,
+  gameContext?: {
+    bigPicture?: string;
+    bookends?: { start: string; end: string };
+    palette?: { yes: string[]; no: string[] };
+    currentContext?: string;
+  }
+): AIMessage[] {
+  const messages: AIMessage[] = [];
+
+  // CACHE BLOCK 1: Game rules and instructions (stable, rarely changes)
+  const rulesMessage = `You are an AI co-player in a game of Microscope RPG, a collaborative timeline-building game where players create a vast history together.
 
 CRITICAL FORMATTING RULES:
 - DO NOT use markdown formatting (no **, ##, -, *, etc.)
@@ -92,28 +105,44 @@ YOUR ROLE:
 - Keep responses conversational and concise (2-4 sentences typically)
 - When suggesting ideas, offer 2-3 options for the player to choose from
 
-`;
+You have access to the complete game state below, including all conversations from all Periods, Events, and Scenes. Use this knowledge to maintain continuity, reference earlier events, and create rich connections across the timeline.`;
 
-  if (gameContext?.bigPicture) {
-    message += `\nThe Big Picture (overall theme/scope): ${gameContext.bigPicture}\n`;
+  messages.push({
+    role: 'system',
+    content: rulesMessage,
+    cache_control: { type: 'ephemeral' },
+  });
+
+  // CACHE BLOCK 2: Complete game state (changes when timeline updates)
+  if (gameState) {
+    const fullGameState = serializeGameState(gameState);
+    messages.push({
+      role: 'system',
+      content: fullGameState,
+      cache_control: { type: 'ephemeral' },
+    });
   }
 
-  if (gameContext?.bookends) {
-    message += `\nBookends:\n- Start: ${gameContext.bookends.start}\n- End: ${gameContext.bookends.end}\n`;
+  // CACHE BLOCK 3: Conversation history (last message gets cached)
+  // This allows the conversation to grow without re-processing old messages
+  if (conversationMessages.length > 0) {
+    conversationMessages.forEach((msg, index) => {
+      const isLastMessage = index === conversationMessages.length - 1;
+      messages.push({
+        role: msg.role,
+        content: msg.content,
+        ...(isLastMessage ? { cache_control: { type: 'ephemeral' } } : {}),
+      });
+    });
   }
 
-  if (gameContext?.palette) {
-    if (gameContext.palette.yes.length > 0) {
-      message += `\nThings we WANT to see: ${gameContext.palette.yes.join(', ')}\n`;
-    }
-    if (gameContext.palette.no.length > 0) {
-      message += `\nThings we DON'T want: ${gameContext.palette.no.join(', ')}\n`;
-    }
-  }
-
+  // Current context hint (if provided, for backward compatibility)
   if (gameContext?.currentContext) {
-    message += `\nCurrent context: ${gameContext.currentContext}\n`;
+    messages.push({
+      role: 'system',
+      content: `Current focus: ${gameContext.currentContext}`,
+    });
   }
 
-  return message;
+  return messages;
 }

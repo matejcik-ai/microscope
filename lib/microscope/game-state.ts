@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { GameState, Period, Event, Message, Conversation, APISettings } from './types';
-import { saveGameState, loadGameState, getCurrentGameId, setCurrentGameId, createNewGame as createNewGameMetadata } from './storage';
+import { saveGameState, loadGameState, getCurrentGameId, setCurrentGameId, createNewGame as createNewGameMetadata, migrateOldStorage } from './storage';
 
 function createEmptyGameState(gameId: string): GameState {
   const metaConversationId = crypto.randomUUID();
@@ -57,6 +57,9 @@ export function useGameState(initialGameId?: string) {
 
   // Load from localStorage on mount
   useEffect(() => {
+    // Run migration first (only happens if old data exists)
+    migrateOldStorage();
+
     const gameId = initialGameId || getCurrentGameId();
 
     if (gameId) {

@@ -7,6 +7,9 @@
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
+  cache_control?: {
+    type: 'ephemeral';
+  };
 }
 
 export interface AIProviderConfig {

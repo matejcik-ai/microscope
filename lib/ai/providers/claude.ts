@@ -19,19 +19,30 @@ export class ClaudeProvider implements AIProvider {
     messages: AIMessage[],
     config?: Partial<AIProviderConfig>
   ): Promise<string> {
-    const systemMessage = messages.find(m => m.role === 'system')?.content;
+    // Handle system messages - can be multiple with cache_control
+    const systemMessages = messages.filter(m => m.role === 'system');
+    const system = systemMessages.length > 0
+      ? systemMessages.map(m => ({
+          type: 'text' as const,
+          text: m.content,
+          ...(m.cache_control ? { cache_control: m.cache_control } : {}),
+        }))
+      : undefined;
+
+    // Handle conversation messages with cache_control support
     const conversationMessages = messages
       .filter(m => m.role !== 'system')
       .map(m => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
+        ...(m.cache_control ? { cache_control: m.cache_control } : {}),
       }));
 
     const response = await this.client.messages.create({
       model: config?.model || this.defaultModel,
       max_tokens: config?.maxTokens || 4096,
       temperature: config?.temperature || 1.0,
-      system: systemMessage,
+      system,
       messages: conversationMessages,
     });
 
@@ -44,19 +55,30 @@ export class ClaudeProvider implements AIProvider {
     onChunk: (chunk: string) => void,
     config?: Partial<AIProviderConfig>
   ): Promise<void> {
-    const systemMessage = messages.find(m => m.role === 'system')?.content;
+    // Handle system messages - can be multiple with cache_control
+    const systemMessages = messages.filter(m => m.role === 'system');
+    const system = systemMessages.length > 0
+      ? systemMessages.map(m => ({
+          type: 'text' as const,
+          text: m.content,
+          ...(m.cache_control ? { cache_control: m.cache_control } : {}),
+        }))
+      : undefined;
+
+    // Handle conversation messages with cache_control support
     const conversationMessages = messages
       .filter(m => m.role !== 'system')
       .map(m => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
+        ...(m.cache_control ? { cache_control: m.cache_control } : {}),
       }));
 
     const stream = await this.client.messages.create({
       model: config?.model || this.defaultModel,
       max_tokens: config?.maxTokens || 4096,
       temperature: config?.temperature || 1.0,
-      system: systemMessage,
+      system,
       messages: conversationMessages,
       stream: true,
     });
