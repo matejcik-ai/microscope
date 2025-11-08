@@ -279,6 +279,62 @@ export function useGameState(initialGameId?: string) {
     });
   }, []);
 
+  const updatePeriod = useCallback((id: string, updates: Partial<Period>) => {
+    setGameState((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        periods: prev.periods.map(period =>
+          period.id === id ? { ...period, ...updates } : period
+        ),
+      };
+    });
+  }, []);
+
+  const updateEvent = useCallback((id: string, updates: Partial<Event>) => {
+    setGameState((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        events: prev.events.map(event =>
+          event.id === id ? { ...event, ...updates } : event
+        ),
+      };
+    });
+  }, []);
+
+  const updateScene = useCallback((id: string, updates: Partial<any>) => {
+    setGameState((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        scenes: prev.scenes.map(scene =>
+          scene.id === id ? { ...scene, ...updates } : scene
+        ),
+      };
+    });
+  }, []);
+
+  const updatePalette = useCallback((yesItems: string[], noItems: string[]) => {
+    setGameState((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        setup: {
+          ...prev.setup,
+          palette: {
+            yes: yesItems,
+            no: noItems,
+          },
+        },
+      };
+    });
+  }, []);
+
   const setSelection = useCallback((type: 'meta' | 'period' | 'event' | 'scene', id?: string) => {
     setGameState((prev) => {
       if (!prev) return prev;
@@ -346,6 +402,10 @@ export function useGameState(initialGameId?: string) {
     addMessageWithId,
     updateMessage,
     removeMessage,
+    updatePeriod,
+    updateEvent,
+    updateScene,
+    updatePalette,
     setSelection,
     getSelectedConversation,
     reset,

@@ -7,9 +7,10 @@ interface TimelineProps {
   onSelect: (type: 'meta' | 'period' | 'event', id?: string) => void;
   selectedId?: string;
   selectedType?: string;
+  onEditPalette?: () => void;
 }
 
-export default function Timeline({ gameState, onSelect, selectedId, selectedType }: TimelineProps) {
+export default function Timeline({ gameState, onSelect, selectedId, selectedType, onEditPalette }: TimelineProps) {
   const getEventsForPeriod = (periodId: string): Event[] => {
     return gameState.events
       .filter(e => e.periodId === periodId)
@@ -59,9 +60,31 @@ export default function Timeline({ gameState, onSelect, selectedId, selectedType
           borderRadius: '4px',
           border: '1px solid #e0e0e0',
         }}>
-          <h3 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-            Palette
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <h3 style={{ fontSize: '0.875rem', fontWeight: '600', margin: 0 }}>
+              Palette
+            </h3>
+            {onEditPalette && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditPalette();
+                }}
+                style={{
+                  padding: '0.25rem 0.5rem',
+                  background: '#1976d2',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                }}
+              >
+                Edit
+              </button>
+            )}
+          </div>
 
           {gameState.setup.palette.yes.length > 0 && (
             <div style={{ marginBottom: '0.5rem' }}>

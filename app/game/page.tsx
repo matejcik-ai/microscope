@@ -9,7 +9,8 @@ import ConversationView from './components/Conversation';
 import APISettingsModal from './components/APISettingsModal';
 import DebugConsole from './components/DebugConsole';
 import GameSwitcher from './components/GameSwitcher';
-import type { APISettings } from '@/lib/microscope/types';
+import PaletteEditor from './components/PaletteEditor';
+import type { APISettings, Period, Event, Scene } from '@/lib/microscope/types';
 
 export default function GamePage() {
   const {
@@ -25,6 +26,10 @@ export default function GamePage() {
     addMessageWithId,
     updateMessage,
     removeMessage,
+    updatePeriod,
+    updateEvent,
+    updateScene,
+    updatePalette,
     setSelection,
     getSelectedConversation,
     switchGame,
@@ -37,6 +42,7 @@ export default function GamePage() {
   const [isTimelineOpen, setIsTimelineOpen] = useState(true); // Start with sidebar open
   const [showDebugConsole, setShowDebugConsole] = useState(false);
   const [showGameSwitcher, setShowGameSwitcher] = useState(false);
+  const [showPaletteEditor, setShowPaletteEditor] = useState(false);
   const [restoreContent, setRestoreContent] = useState<string | null>(null);
   const [apiSettings, setApiSettings] = useState<APISettings | null>(null);
 
@@ -374,6 +380,43 @@ export default function GamePage() {
     return 'Unknown';
   };
 
+  const getSelectedObject = (): { type: 'period' | 'event' | 'scene'; data: Period | Event | Scene } | null => {
+    if (!gameState.currentSelection) return null;
+
+    const { type, id } = gameState.currentSelection;
+
+    if (type === 'period') {
+      const period = gameState.periods.find(p => p.id === id);
+      return period ? { type: 'period', data: period } : null;
+    }
+
+    if (type === 'event') {
+      const event = gameState.events.find(e => e.id === id);
+      return event ? { type: 'event', data: event } : null;
+    }
+
+    if (type === 'scene') {
+      const scene = gameState.scenes.find(s => s.id === id);
+      return scene ? { type: 'scene', data: scene } : null;
+    }
+
+    return null;
+  };
+
+  const handleUpdateObject = (updates: Partial<Period | Event | Scene>) => {
+    if (!gameState.currentSelection) return;
+
+    const { type, id } = gameState.currentSelection;
+
+    if (type === 'period') {
+      updatePeriod(id, updates);
+    } else if (type === 'event') {
+      updateEvent(id, updates);
+    } else if (type === 'scene') {
+      updateScene(id, updates);
+    }
+  };
+
   return (
     <div style={{
       height: '100dvh',
@@ -547,6 +590,7 @@ export default function GamePage() {
               }}
               selectedId={gameState.currentSelection?.id}
               selectedType={gameState.currentSelection?.type}
+              onEditPalette={() => setShowPaletteEditor(true)}
             />
           </div>
         </div>
@@ -566,6 +610,8 @@ export default function GamePage() {
             onNavigateToObject={(type, id) => setSelection(type, id)}
             restoreContent={restoreContent}
             isLoading={isLoading}
+            selectedObject={getSelectedObject()}
+            onUpdateObject={handleUpdateObject}
           />
         </div>
       </div>
@@ -712,6 +758,19 @@ export default function GamePage() {
           onSwitchGame={switchGame}
           onCreateNewGame={createNewGame}
           onClose={() => setShowGameSwitcher(false)}
+        />
+      )}
+
+      {/* Palette Editor */}
+      {showPaletteEditor && (
+        <PaletteEditor
+          yesItems={gameState.setup.palette.yes}
+          noItems={gameState.setup.palette.no}
+          onSave={(yesItems, noItems) => {
+            updatePalette(yesItems, noItems);
+            setShowPaletteEditor(false);
+          }}
+          onClose={() => setShowPaletteEditor(false)}
         />
       )}
     </div>

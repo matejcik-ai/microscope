@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import type { Conversation, Message } from '@/lib/microscope/types';
+import type { Conversation, Message, Period, Event, Scene } from '@/lib/microscope/types';
+import ObjectEditor from './ObjectEditor';
 
 interface ConversationProps {
   conversation: Conversation | null;
@@ -10,6 +11,11 @@ interface ConversationProps {
   onNavigateToObject?: (type: 'period' | 'event' | 'scene', id: string) => void;
   restoreContent?: string | null;
   isLoading?: boolean;
+  selectedObject?: {
+    type: 'period' | 'event' | 'scene';
+    data: Period | Event | Scene;
+  } | null;
+  onUpdateObject?: (updates: Partial<Period | Event | Scene>) => void;
 }
 
 export default function ConversationView({
@@ -19,6 +25,8 @@ export default function ConversationView({
   onNavigateToObject,
   restoreContent = null,
   isLoading = false,
+  selectedObject = null,
+  onUpdateObject,
 }: ConversationProps) {
   const [input, setInput] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -98,6 +106,15 @@ export default function ConversationView({
       }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{title}</h2>
       </div>
+
+      {/* Object Editor (for periods, events, scenes) */}
+      {selectedObject && onUpdateObject && (
+        <ObjectEditor
+          type={selectedObject.type}
+          object={selectedObject.data}
+          onUpdate={onUpdateObject}
+        />
+      )}
 
       {/* Messages */}
       <div style={{
