@@ -5,6 +5,7 @@ import { useGameState } from '@/lib/microscope/game-state';
 import Timeline from './components/Timeline';
 import ConversationView from './components/Conversation';
 import APISettingsModal from './components/APISettingsModal';
+import DebugConsole from './components/DebugConsole';
 import type { APISettings } from '@/lib/microscope/types';
 
 export default function GamePage() {
@@ -23,6 +24,7 @@ export default function GamePage() {
   const [showAddPeriod, setShowAddPeriod] = useState(false);
   const [showAPISettings, setShowAPISettings] = useState(false);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [showDebugConsole, setShowDebugConsole] = useState(false);
 
   if (!isLoaded || !gameState) {
     return (
@@ -244,7 +246,22 @@ export default function GamePage() {
             Microscope RPG
           </h1>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setShowDebugConsole(true)}
+            style={{
+              padding: '0.5rem 1rem',
+              background: 'rgba(255,255,255,0.2)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: '600',
+            }}
+            title="Debug Console"
+          >
+            🐛
+          </button>
           <button
             onClick={() => setShowAPISettings(true)}
             style={{
@@ -258,7 +275,7 @@ export default function GamePage() {
             }}
             title={gameState.apiSettings?.apiKey ? 'Change API Settings' : 'Set API Key (Required)'}
           >
-            {gameState.apiSettings?.apiKey ? '⚙️ API' : '⚠️ Set API Key'}
+            {gameState.apiSettings?.apiKey ? '⚙️' : '⚠️'}
           </button>
           <button
             onClick={() => setShowAddPeriod(true)}
@@ -450,6 +467,11 @@ export default function GamePage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Debug Console */}
+      {showDebugConsole && (
+        <DebugConsole onClose={() => setShowDebugConsole(false)} />
       )}
     </div>
   );
