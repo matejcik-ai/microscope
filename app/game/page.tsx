@@ -399,7 +399,7 @@ export default function GamePage() {
       {/* API Settings Modal */}
       {(showAPISettings || !apiSettings?.apiKey) && (
         <APISettingsModal
-          currentSettings={apiSettings}
+          currentSettings={apiSettings || undefined}
           onSave={handleSaveAPISettings}
           onClose={() => setShowAPISettings(false)}
           canClose={!!apiSettings?.apiKey}

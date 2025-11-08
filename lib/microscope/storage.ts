@@ -183,8 +183,8 @@ export function migrateOldStorage(): void {
       return;
     }
 
-    // Parse old game state
-    const oldGameState: GameState = JSON.parse(oldData);
+    // Parse old game state (might have apiSettings from old format)
+    const oldGameState: any = JSON.parse(oldData);
 
     // Migrate API settings to global storage if they exist
     if (oldGameState.apiSettings) {
