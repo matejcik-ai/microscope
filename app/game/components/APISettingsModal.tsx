@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { APISettings } from '@/lib/microscope/types';
 
 interface APISettingsModalProps {
@@ -10,17 +10,18 @@ interface APISettingsModalProps {
   canClose?: boolean;
 }
 
-// Current Claude models as of early 2025
-const CLAUDE_MODELS = [
-  { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (Latest)', recommended: true },
-  { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku (Fast & Cheap)' },
-  { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus (Most Capable)' },
-  { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet' },
-  { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' },
+// Fallback models if API fetch fails
+const FALLBACK_CLAUDE_MODELS = [
+  { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5 ⭐', recommended: true },
+  { id: 'claude-opus-4-1-20250805', name: 'Claude Opus 4.1' },
+  { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet' },
+  { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (Oct 2024)' },
+  { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku (Fast)' },
 ];
 
-const OPENAI_MODELS = [
-  { id: 'gpt-4-turbo-preview', name: 'GPT-4 Turbo (Latest)', recommended: true },
+const FALLBACK_OPENAI_MODELS = [
+  { id: 'gpt-4o', name: 'GPT-4o (Latest)', recommended: true },
+  { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
   { id: 'gpt-4', name: 'GPT-4' },
   { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' },
 ];
@@ -36,10 +37,36 @@ export default function APISettingsModal({
   );
   const [apiKey, setApiKey] = useState(currentSettings?.apiKey || '');
   const [model, setModel] = useState(
-    currentSettings?.model || CLAUDE_MODELS[0].id
+    currentSettings?.model || FALLBACK_CLAUDE_MODELS[0].id
   );
+  const [fetchedModels, setFetchedModels] = useState<{
+    claude: any[];
+    openai: any[];
+  } | null>(null);
+  const [isLoadingModels, setIsLoadingModels] = useState(true);
 
-  const models = provider === 'claude' ? CLAUDE_MODELS : OPENAI_MODELS;
+  // Fetch models from API on mount
+  useEffect(() => {
+    fetch('/api/models')
+      .then(res => res.json())
+      .then(data => {
+        setFetchedModels(data);
+        setIsLoadingModels(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch models:', err);
+        // Fall back to hardcoded list
+        setFetchedModels({
+          claude: FALLBACK_CLAUDE_MODELS,
+          openai: FALLBACK_OPENAI_MODELS,
+        });
+        setIsLoadingModels(false);
+      });
+  }, []);
+
+  const models = provider === 'claude'
+    ? (fetchedModels?.claude || FALLBACK_CLAUDE_MODELS)
+    : (fetchedModels?.openai || FALLBACK_OPENAI_MODELS);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +82,9 @@ export default function APISettingsModal({
   const handleProviderChange = (newProvider: 'claude' | 'openai') => {
     setProvider(newProvider);
     // Set default model for the new provider
-    const defaultModels = newProvider === 'claude' ? CLAUDE_MODELS : OPENAI_MODELS;
+    const defaultModels = newProvider === 'claude'
+      ? (fetchedModels?.claude || FALLBACK_CLAUDE_MODELS)
+      : (fetchedModels?.openai || FALLBACK_OPENAI_MODELS);
     setModel(defaultModels[0].id);
   };
 
@@ -127,17 +156,19 @@ export default function APISettingsModal({
                 fontWeight: '600',
               }}
             >
-              Model
+              Model {isLoadingModels && <span style={{ color: '#999', fontWeight: 'normal', fontSize: '0.875rem' }}>(loading...)</span>}
             </label>
             <select
               value={model}
               onChange={(e) => setModel(e.target.value)}
+              disabled={isLoadingModels}
               style={{
                 width: '100%',
                 padding: '0.5rem',
                 border: '1px solid #ddd',
                 borderRadius: '4px',
                 fontSize: '1rem',
+                opacity: isLoadingModels ? 0.6 : 1,
               }}
             >
               {models.map((m) => (
@@ -147,7 +178,11 @@ export default function APISettingsModal({
               ))}
             </select>
             <p style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
-              Recommended: {models.find(m => m.recommended)?.name}
+              {isLoadingModels ? (
+                'Fetching latest models...'
+              ) : (
+                <>Recommended: {models.find(m => m.recommended)?.name}</>
+              )}
             </p>
           </div>
 
