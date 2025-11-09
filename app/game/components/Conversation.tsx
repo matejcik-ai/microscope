@@ -16,7 +16,10 @@ interface ConversationProps {
     data: Period | Event | Scene;
   } | null;
   onUpdateObject?: (updates: Partial<Period | Event | Scene>) => void;
+  onDeleteObject?: () => void;
   onReparseMessage?: (messageId: string) => void;
+  onEditMessage?: (messageId: string, newContent: string) => void;
+  onRerunFromMessage?: (messageId: string) => void;
 }
 
 export default function ConversationView({
@@ -28,7 +31,10 @@ export default function ConversationView({
   isLoading = false,
   selectedObject = null,
   onUpdateObject,
+  onDeleteObject,
   onReparseMessage,
+  onEditMessage,
+  onRerunFromMessage,
 }: ConversationProps) {
   const [input, setInput] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -135,6 +141,7 @@ export default function ConversationView({
           type={selectedObject.type}
           object={selectedObject.data}
           onUpdate={onUpdateObject}
+          onDelete={onDeleteObject}
         />
       )}
 
@@ -164,6 +171,8 @@ export default function ConversationView({
               onNavigateToObject={onNavigateToObject}
               showNewlines={showNewlines}
               onReparse={onReparseMessage}
+              onEdit={onEditMessage}
+              onRerun={onRerunFromMessage}
             />
           ))
         )}
@@ -403,14 +412,20 @@ function MessageBubble({
   onNavigateToObject,
   showNewlines,
   onReparse,
+  onEdit,
+  onRerun,
 }: {
   message: Message;
   onNavigateToObject?: (type: 'period' | 'event' | 'scene', id: string) => void;
   showNewlines?: boolean;
   onReparse?: (messageId: string) => void;
+  onEdit?: (messageId: string, newContent: string) => void;
+  onRerun?: (messageId: string) => void;
 }) {
   const [showActions, setShowActions] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(message.content);
 
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
@@ -440,6 +455,31 @@ function MessageBubble({
   const handleReparse = () => {
     if (onReparse) {
       onReparse(message.id);
+      setShowActions(false);
+    }
+  };
+
+  const handleEditStart = () => {
+    setIsEditing(true);
+    setEditContent(message.content);
+    setShowActions(false);
+  };
+
+  const handleEditSave = () => {
+    if (onEdit && editContent.trim() !== message.content) {
+      onEdit(message.id, editContent.trim());
+    }
+    setIsEditing(false);
+  };
+
+  const handleEditCancel = () => {
+    setEditContent(message.content);
+    setIsEditing(false);
+  };
+
+  const handleRerun = () => {
+    if (onRerun) {
+      onRerun(message.id);
       setShowActions(false);
     }
   };
@@ -482,25 +522,79 @@ function MessageBubble({
         </div>
       )}
       <div style={{ width: '100%', boxSizing: 'border-box' }}>
-        <div
-          onClick={handleClick}
-          style={{
-            padding: isSystem ? '0.5rem' : isError ? '1rem' : '0.75rem 1rem',
-            background: isSystem ? 'transparent' : isError ? '#ffebee' : isUser ? '#1976d2' : '#f0f0f0',
-            color: isSystem ? '#666' : isError ? '#c62828' : isUser ? 'white' : '#000',
-            borderRadius: '8px',
-            fontStyle: isSystem ? 'italic' : 'normal',
-            fontSize: isSystem ? '0.875rem' : '1rem',
-            border: isSystem ? '1px dashed #ddd' : isError ? '2px solid #ef5350' : 'none',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            cursor: hasLink ? 'pointer' : 'pointer',
-            textDecoration: hasLink ? 'underline' : 'none',
-            boxSizing: 'border-box',
-          }}
-        >
-          {displayContent}
-        </div>
+        {isEditing ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              style={{
+                padding: '0.75rem 1rem',
+                background: '#fff',
+                color: '#000',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                border: '2px solid #1976d2',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                boxSizing: 'border-box',
+                fontFamily: 'inherit',
+                resize: 'vertical',
+                minHeight: '100px',
+                width: '100%',
+              }}
+            />
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={handleEditCancel}
+                style={{
+                  padding: '0.375rem 0.75rem',
+                  background: '#f0f0f0',
+                  color: '#333',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditSave}
+                style={{
+                  padding: '0.375rem 0.75rem',
+                  background: '#1976d2',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div
+            onClick={handleClick}
+            style={{
+              padding: isSystem ? '0.5rem' : isError ? '1rem' : '0.75rem 1rem',
+              background: isSystem ? 'transparent' : isError ? '#ffebee' : isUser ? '#1976d2' : '#f0f0f0',
+              color: isSystem ? '#666' : isError ? '#c62828' : isUser ? 'white' : '#000',
+              borderRadius: '8px',
+              fontStyle: isSystem ? 'italic' : 'normal',
+              fontSize: isSystem ? '0.875rem' : '1rem',
+              border: isSystem ? '1px dashed #ddd' : isError ? '2px solid #ef5350' : 'none',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              cursor: hasLink ? 'pointer' : 'pointer',
+              textDecoration: hasLink ? 'underline' : 'none',
+              boxSizing: 'border-box',
+            }}
+          >
+            {displayContent}
+          </div>
+        )}
         {showActions && !isPending && (
           <div style={{
             marginTop: '0.5rem',
@@ -536,6 +630,38 @@ function MessageBubble({
                 }}
               >
                 🔄 Reparse
+              </button>
+            )}
+            {!isSystem && !isError && onEdit && (
+              <button
+                onClick={handleEditStart}
+                style={{
+                  padding: '0.375rem 0.75rem',
+                  background: '#f0f0f0',
+                  color: '#333',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                }}
+              >
+                ✏️ Edit
+              </button>
+            )}
+            {!isSystem && !isError && onRerun && (
+              <button
+                onClick={handleRerun}
+                style={{
+                  padding: '0.375rem 0.75rem',
+                  background: '#ff9800',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                }}
+              >
+                ▶️ Rerun from here
               </button>
             )}
           </div>
