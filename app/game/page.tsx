@@ -69,34 +69,11 @@ export default function GamePage() {
     const metaConversationId = gameState.metaConversationId;
 
     switch (command.type) {
-      case 'create-period':
-      case 'create-bookend-period': {
-        const { title, tone, description, position } = command.data;
-        const isBookend = command.type === 'create-bookend-period';
-
-        // Check if we're editing an existing bookend
-        if (isBookend) {
-          const existingBookend = gameState.periods.find(p =>
-            p.isBookend && (
-              (position === 'start' && p.id === gameState.setup.bookends?.start) ||
-              (position === 'end' && p.id === gameState.setup.bookends?.end)
-            )
-          );
-
-          if (existingBookend) {
-            // Edit existing bookend
-            updatePeriod(existingBookend.id, { title, description, tone });
-            addMessage(currentConversationId, {
-              role: 'system',
-              playerId: 'system',
-              content: `Updated ${position} bookend: ${title}`,
-            });
-            break;
-          }
-        }
+      case 'create-period': {
+        const { title, tone, description } = command.data;
 
         // Create the period
-        addPeriod(title, description, tone, isBookend);
+        addPeriod(title, description, tone, false);
 
         // Find the created period (it was just added)
         setTimeout(() => {
@@ -104,14 +81,58 @@ export default function GamePage() {
           if (!period) return;
 
           // Add system notification to meta chat with link
-          const notificationText = isBookend
-            ? `Created bookend period: ${title}`
-            : `Created period: ${title}`;
-
           addMessage(metaConversationId, {
             role: 'system',
             playerId: 'system',
-            content: notificationText,
+            content: `Created period: ${title}`,
+            metadata: {
+              linkTo: {
+                type: 'period',
+                id: period.id,
+              },
+            },
+          });
+        }, 100);
+        break;
+      }
+
+      case 'create-start-bookend':
+      case 'create-end-bookend': {
+        const { title, tone, description } = command.data;
+        const position = command.type === 'create-start-bookend' ? 'start' : 'end';
+
+        // Check if we're editing an existing bookend
+        const existingBookend = gameState.periods.find(p =>
+          p.isBookend && (
+            (position === 'start' && p.id === gameState.setup.bookends?.start) ||
+            (position === 'end' && p.id === gameState.setup.bookends?.end)
+          )
+        );
+
+        if (existingBookend) {
+          // Edit existing bookend
+          updatePeriod(existingBookend.id, { title, description, tone });
+          addMessage(currentConversationId, {
+            role: 'system',
+            playerId: 'system',
+            content: `Updated ${position} bookend: ${title}`,
+          });
+          break;
+        }
+
+        // Create new bookend
+        addPeriod(title, description, tone, true);
+
+        // Find the created period (it was just added)
+        setTimeout(() => {
+          const period = findPeriodByTitle(title);
+          if (!period) return;
+
+          // Add system notification to meta chat with link
+          addMessage(metaConversationId, {
+            role: 'system',
+            playerId: 'system',
+            content: `Created ${position} bookend: ${title}`,
             metadata: {
               linkTo: {
                 type: 'period',

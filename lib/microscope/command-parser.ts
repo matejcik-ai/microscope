@@ -3,7 +3,7 @@
  */
 
 export interface ParsedCommand {
-  type: 'create-period' | 'create-bookend-period' | 'create-event' | 'create-scene' |
+  type: 'create-period' | 'create-start-bookend' | 'create-end-bookend' | 'create-event' | 'create-scene' |
         'add-palette' | 'edit-name' | 'edit-description' | 'edit-tone' | 'none';
   data?: any;
   remainingMessage?: string; // Text that should go to the conversation (after all commands)
@@ -23,7 +23,8 @@ export interface ParsedResponse {
  *
  * Supported commands:
  * - # create period: Title (light|dark) | Description
- * - # create bookend period: Title (light|dark) | Summary
+ * - # create start bookend: Title (light|dark) | Summary
+ * - # create end bookend: Title (light|dark) | Summary
  * - # create event: Title (light|dark) in Period Title
  * - # create scene: Question in Event Title
  * - # add to palette yes: item
@@ -100,18 +101,28 @@ function parseSingleCommand(commandLine: string): ParsedCommand {
     };
   }
 
-  // Parse create bookend period command
-  const bookendMatch = commandLine.match(/^create bookend period:\s*(.+?)\s*\((light|dark)\)\s*\|\s*(.+)$/i);
-  if (bookendMatch) {
+  // Parse create start bookend command
+  const startBookendMatch = commandLine.match(/^create start bookend:\s*(.+?)\s*\((light|dark)\)\s*\|\s*(.+)$/i);
+  if (startBookendMatch) {
     return {
-      type: 'create-bookend-period',
+      type: 'create-start-bookend',
       data: {
-        title: bookendMatch[1].trim(),
-        tone: bookendMatch[2].toLowerCase() as 'light' | 'dark',
-        description: bookendMatch[3].trim(),
-        position: bookendMatch[1].toLowerCase().includes('start') ||
-                  bookendMatch[1].toLowerCase().includes('begin') ||
-                  bookendMatch[1].toLowerCase().includes('first') ? 'start' : 'end',
+        title: startBookendMatch[1].trim(),
+        tone: startBookendMatch[2].toLowerCase() as 'light' | 'dark',
+        description: startBookendMatch[3].trim(),
+      },
+    };
+  }
+
+  // Parse create end bookend command
+  const endBookendMatch = commandLine.match(/^create end bookend:\s*(.+?)\s*\((light|dark)\)\s*\|\s*(.+)$/i);
+  if (endBookendMatch) {
+    return {
+      type: 'create-end-bookend',
+      data: {
+        title: endBookendMatch[1].trim(),
+        tone: endBookendMatch[2].toLowerCase() as 'light' | 'dark',
+        description: endBookendMatch[3].trim(),
       },
     };
   }
