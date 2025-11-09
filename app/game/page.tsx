@@ -70,10 +70,10 @@ export default function GamePage() {
 
     switch (command.type) {
       case 'create-period': {
-        const { title, tone, description } = command.data;
+        const { title, tone, description, placement } = command.data;
 
-        // Create the period
-        addPeriod(title, description, tone, false);
+        // Create the period with optional placement
+        addPeriod(title, description, tone, false, placement);
 
         // Find the created period (it was just added)
         setTimeout(() => {

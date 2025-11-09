@@ -22,7 +22,7 @@ export interface ParsedResponse {
  * 2. Multiple commands, each prefixed with # on its own line
  *
  * Supported commands:
- * - # create period: Title (light|dark) | Description
+ * - # create period: Title (light|dark) [after|before PeriodTitle | first] | Description
  * - # create start bookend: Title (light|dark) | Summary
  * - # create end bookend: Title (light|dark) | Summary
  * - # create event: Title (light|dark) in Period Title
@@ -88,15 +88,36 @@ export function parseAIResponse(response: string): ParsedResponse {
  * Parse a single command line (without # prefix)
  */
 function parseSingleCommand(commandLine: string): ParsedCommand {
-  // Parse create period command
-  const periodMatch = commandLine.match(/^create period:\s*(.+?)\s*\((light|dark)\)\s*\|\s*(.+)$/i);
+  // Parse create period command with placement
+  // Format: create period: Title (light|dark) [after|before PeriodTitle | first] | Description
+  const periodMatch = commandLine.match(/^create period:\s*(.+?)\s*\((light|dark)\)\s+(after|before)\s+(.+?)\s*\|\s*(.+)$/i);
   if (periodMatch) {
     return {
       type: 'create-period',
       data: {
         title: periodMatch[1].trim(),
         tone: periodMatch[2].toLowerCase() as 'light' | 'dark',
-        description: periodMatch[3].trim(),
+        placement: {
+          type: periodMatch[3].toLowerCase() as 'after' | 'before',
+          relativeTo: periodMatch[4].trim(),
+        },
+        description: periodMatch[5].trim(),
+      },
+    };
+  }
+
+  // Parse create period command with "first" placement
+  const periodFirstMatch = commandLine.match(/^create period:\s*(.+?)\s*\((light|dark)\)\s+first\s*\|\s*(.+)$/i);
+  if (periodFirstMatch) {
+    return {
+      type: 'create-period',
+      data: {
+        title: periodFirstMatch[1].trim(),
+        tone: periodFirstMatch[2].toLowerCase() as 'light' | 'dark',
+        placement: {
+          type: 'first' as const,
+        },
+        description: periodFirstMatch[3].trim(),
       },
     };
   }
