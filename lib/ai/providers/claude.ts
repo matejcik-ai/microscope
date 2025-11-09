@@ -15,23 +15,27 @@ export class ClaudeProvider implements AIProvider {
     this.defaultModel = defaultModel;
   }
 
-  async generateResponse(
-    messages: AIMessage[],
-    config?: Partial<AIProviderConfig>
-  ): Promise<string> {
-    // Handle system messages - can be multiple with cache_control
+  /**
+   * Prepare system messages with cache_control support
+   */
+  private prepareSystemMessages(messages: AIMessage[]) {
     const systemMessages = messages.filter(m => m.role === 'system');
-    const system = systemMessages.length > 0
+    return systemMessages.length > 0
       ? systemMessages.map(m => ({
           type: 'text' as const,
           text: m.content,
           ...(m.cache_control ? { cache_control: m.cache_control } : {}),
         }))
       : undefined;
+  }
 
-    // Handle conversation messages with cache_control support
-    // Note: When using cache_control, content must be an array of blocks
-    const conversationMessages = messages
+  /**
+   * Prepare conversation messages with cache_control support
+   *
+   * Note: When using cache_control, content must be an array of blocks
+   */
+  private prepareConversationMessages(messages: AIMessage[]) {
+    return messages
       .filter(m => m.role !== 'system')
       .map(m => {
         if (m.cache_control) {
@@ -54,6 +58,14 @@ export class ClaudeProvider implements AIProvider {
           };
         }
       });
+  }
+
+  async generateResponse(
+    messages: AIMessage[],
+    config?: Partial<AIProviderConfig>
+  ): Promise<string> {
+    const system = this.prepareSystemMessages(messages);
+    const conversationMessages = this.prepareConversationMessages(messages);
 
     const response = await this.client.messages.create({
       model: config?.model || this.defaultModel,
@@ -72,41 +84,8 @@ export class ClaudeProvider implements AIProvider {
     onChunk: (chunk: string) => void,
     config?: Partial<AIProviderConfig>
   ): Promise<void> {
-    // Handle system messages - can be multiple with cache_control
-    const systemMessages = messages.filter(m => m.role === 'system');
-    const system = systemMessages.length > 0
-      ? systemMessages.map(m => ({
-          type: 'text' as const,
-          text: m.content,
-          ...(m.cache_control ? { cache_control: m.cache_control } : {}),
-        }))
-      : undefined;
-
-    // Handle conversation messages with cache_control support
-    // Note: When using cache_control, content must be an array of blocks
-    const conversationMessages = messages
-      .filter(m => m.role !== 'system')
-      .map(m => {
-        if (m.cache_control) {
-          // Use content block format when cache_control is present
-          return {
-            role: m.role as 'user' | 'assistant',
-            content: [
-              {
-                type: 'text' as const,
-                text: m.content,
-                cache_control: m.cache_control,
-              }
-            ],
-          };
-        } else {
-          // Use simple string format when no cache_control
-          return {
-            role: m.role as 'user' | 'assistant',
-            content: m.content,
-          };
-        }
-      });
+    const system = this.prepareSystemMessages(messages);
+    const conversationMessages = this.prepareConversationMessages(messages);
 
     const stream = await this.client.messages.create({
       model: config?.model || this.defaultModel,
