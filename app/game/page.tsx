@@ -76,36 +76,42 @@ export default function GamePage() {
         const { title, tone, description, placement } = command.data;
 
         // Create the period with optional placement
-        addPeriod(title, description, tone, false, placement);
+        const periodId = addPeriod(title, description, tone, false, placement);
 
-        // Find the created period (it was just added)
-        setTimeout(() => {
-          const period = findPeriodByTitle(title);
-          if (!period) return;
+        if (!periodId) {
+          console.error('Failed to create period:', title);
+          break;
+        }
 
-          // Add system notification to meta chat with link
-          addMessage(metaConversationId, {
-            role: 'system',
-            playerId: 'system',
-            content: `Created period: ${title}`,
-            metadata: {
-              linkTo: {
-                type: 'period',
-                id: period.id,
-              },
+        // Find the created period immediately (no setTimeout needed)
+        const period = gameState.periods.find(p => p.id === periodId);
+        if (!period) {
+          console.error('Period not found after creation:', periodId);
+          break;
+        }
+
+        // Add clickable link to meta chat
+        addMessage(metaConversationId, {
+          role: 'system',
+          playerId: 'system',
+          content: `Created period: ${title}`,
+          metadata: {
+            linkTo: {
+              type: 'period',
+              id: period.id,
             },
-          });
+          },
+        });
 
-          // Teleport remaining message to period's conversation
-          if (remainingMessage) {
-            addMessage(period.conversationId, {
-              role: 'assistant',
-              playerId: 'ai-1',
-              playerName: 'AI Player',
-              content: remainingMessage,
-            });
-          }
-        }, 100);
+        // Teleport remaining message to period's conversation
+        if (remainingMessage) {
+          addMessage(period.conversationId, {
+            role: 'assistant',
+            playerId: 'ai-1',
+            playerName: 'AI Player',
+            content: remainingMessage,
+          });
+        }
         break;
       }
 
@@ -134,26 +140,32 @@ export default function GamePage() {
         }
 
         // Create new bookend
-        addPeriod(title, description, tone, true);
+        const periodId = addPeriod(title, description, tone, true);
 
-        // Find the created period (it was just added)
-        setTimeout(() => {
-          const period = findPeriodByTitle(title);
-          if (!period) return;
+        if (!periodId) {
+          console.error('Failed to create bookend:', title);
+          break;
+        }
 
-          // Add system notification to meta chat with link
-          addMessage(metaConversationId, {
-            role: 'system',
-            playerId: 'system',
-            content: `Created ${position} bookend: ${title}`,
-            metadata: {
-              linkTo: {
-                type: 'period',
-                id: period.id,
-              },
+        // Find the created period immediately
+        const period = gameState.periods.find(p => p.id === periodId);
+        if (!period) {
+          console.error('Bookend period not found after creation:', periodId);
+          break;
+        }
+
+        // Add clickable link to meta chat
+        addMessage(metaConversationId, {
+          role: 'system',
+          playerId: 'system',
+          content: `Created ${position} bookend: ${title}`,
+          metadata: {
+            linkTo: {
+              type: 'period',
+              id: period.id,
             },
-          });
-        }, 100);
+          },
+        });
         break;
       }
 
@@ -162,8 +174,8 @@ export default function GamePage() {
         const period = findPeriodByTitle(periodTitle);
 
         if (!period) {
-          // Period not found - add error to current conversation
-          addMessage(currentConversationId, {
+          // Period not found - add error to meta conversation
+          addMessage(metaConversationId, {
             role: 'error',
             playerId: 'system',
             content: `Cannot create event: Period "${periodTitle}" not found`,
@@ -172,36 +184,42 @@ export default function GamePage() {
         }
 
         // Create the event
-        addEvent(period.id, title, '', tone);
+        const eventId = addEvent(period.id, title, '', tone);
 
-        // Find the created event
-        setTimeout(() => {
-          const event = findEventByTitle(title);
-          if (!event) return;
+        if (!eventId) {
+          console.error('Failed to create event:', title);
+          break;
+        }
 
-          // Add system notification to meta chat with link
-          addMessage(metaConversationId, {
-            role: 'system',
-            playerId: 'system',
-            content: `Created event: ${title} (in ${periodTitle})`,
-            metadata: {
-              linkTo: {
-                type: 'event',
-                id: event.id,
-              },
+        // Find the created event immediately
+        const event = gameState.events.find(e => e.id === eventId);
+        if (!event) {
+          console.error('Event not found after creation:', eventId);
+          break;
+        }
+
+        // Add clickable link to meta chat
+        addMessage(metaConversationId, {
+          role: 'system',
+          playerId: 'system',
+          content: `Created event: ${title} (in ${periodTitle})`,
+          metadata: {
+            linkTo: {
+              type: 'event',
+              id: event.id,
             },
-          });
+          },
+        });
 
-          // Teleport remaining message to event's conversation
-          if (remainingMessage) {
-            addMessage(event.conversationId, {
-              role: 'assistant',
-              playerId: 'ai-1',
-              playerName: 'AI Player',
-              content: remainingMessage,
-            });
-          }
-        }, 100);
+        // Teleport remaining message to event's conversation
+        if (remainingMessage) {
+          addMessage(event.conversationId, {
+            role: 'assistant',
+            playerId: 'ai-1',
+            playerName: 'AI Player',
+            content: remainingMessage,
+          });
+        }
         break;
       }
 
@@ -479,8 +497,9 @@ export default function GamePage() {
       // SUCCESS: Update pending message to non-pending
       updateMessage(conversationId, pendingMessageId, { pending: false });
 
-      // Always add the full AI response to conversation (for debugging)
-      addMessage(conversationId, {
+      // Always add the full AI response to meta chat for debugging
+      const metaConversationId = gameState.metaConversationId;
+      addMessage(metaConversationId, {
         role: 'assistant',
         playerId: 'ai-1',
         playerName: 'AI Player',
