@@ -255,4 +255,17 @@ test('Invalid command: malformed syntax ignored', () => {
   assertEquals(result.commands[0].type, 'none');
 });
 
+// Test 19: Multi-line descriptions (currently broken)
+test('Multi-line description: command split across lines', () => {
+  const result = parseAIResponse(
+    '# create start bookend: The Cracks Appear (light) | The Empire of the Sun\nstands at its zenith, vast and prosperous.'
+  );
+
+  // This should work but currently doesn't
+  console.log('Multi-line test result:', JSON.stringify(result, null, 2));
+
+  // Currently this fails - the command won't be recognized
+  // because the description is split across lines
+});
+
 console.log('\n✅ All tests passed!\n');

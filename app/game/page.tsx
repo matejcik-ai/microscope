@@ -312,6 +312,46 @@ export default function GamePage() {
     return null;
   };
 
+  const handleReparseMessage = async (messageId: string) => {
+    if (!gameState.currentSelection) return;
+
+    const conversationId = getConversationId();
+    if (!conversationId) return;
+
+    const conversation = gameState.conversations[conversationId];
+    if (!conversation) return;
+
+    // Find the message
+    const message = conversation.messages.find(m => m.id === messageId);
+    if (!message || message.role !== 'assistant') return;
+
+    // Parse the message content for commands
+    const parsed = parseAIResponse(message.content);
+
+    // Handle all commands
+    if (parsed.commands.length > 0 && parsed.commands[0].type !== 'none') {
+      for (const command of parsed.commands) {
+        if (command.type !== 'none') {
+          await handleAICommand(command, conversationId);
+        }
+      }
+
+      // Add a system message indicating reparse
+      addMessage(conversationId, {
+        role: 'system',
+        playerId: 'system',
+        content: `Reparsed AI message - found ${parsed.commands.length} command(s)`,
+      });
+    } else {
+      // No commands found
+      addMessage(conversationId, {
+        role: 'system',
+        playerId: 'system',
+        content: 'No commands found in message',
+      });
+    }
+  };
+
   const handleSendMessage = async (content: string) => {
     if (!gameState.currentSelection) return;
 
@@ -750,6 +790,7 @@ export default function GamePage() {
             isLoading={isLoading}
             selectedObject={getSelectedObject()}
             onUpdateObject={handleUpdateObject}
+            onReparseMessage={handleReparseMessage}
           />
         </div>
       </div>

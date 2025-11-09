@@ -16,6 +16,7 @@ interface ConversationProps {
     data: Period | Event | Scene;
   } | null;
   onUpdateObject?: (updates: Partial<Period | Event | Scene>) => void;
+  onReparseMessage?: (messageId: string) => void;
 }
 
 export default function ConversationView({
@@ -27,10 +28,12 @@ export default function ConversationView({
   isLoading = false,
   selectedObject = null,
   onUpdateObject,
+  onReparseMessage,
 }: ConversationProps) {
   const [input, setInput] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [enterToSend, setEnterToSend] = useState(false);
+  const [showNewlines, setShowNewlines] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -103,8 +106,27 @@ export default function ConversationView({
         padding: '1rem',
         borderBottom: '1px solid #e0e0e0',
         background: '#fafafa',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
       }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{title}</h2>
+        <button
+          onClick={() => setShowNewlines(!showNewlines)}
+          style={{
+            padding: '0.375rem 0.75rem',
+            background: showNewlines ? '#1976d2' : '#f0f0f0',
+            color: showNewlines ? 'white' : '#333',
+            border: '1px solid #ddd',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '0.75rem',
+            whiteSpace: 'nowrap',
+          }}
+          title="Toggle visible newlines"
+        >
+          {showNewlines ? '¶ On' : '¶ Off'}
+        </button>
       </div>
 
       {/* Object Editor (for periods, events, scenes) */}
@@ -140,6 +162,8 @@ export default function ConversationView({
               key={message.id}
               message={message}
               onNavigateToObject={onNavigateToObject}
+              showNewlines={showNewlines}
+              onReparse={onReparseMessage}
             />
           ))
         )}
@@ -377,21 +401,53 @@ export default function ConversationView({
 function MessageBubble({
   message,
   onNavigateToObject,
+  showNewlines,
+  onReparse,
 }: {
   message: Message;
   onNavigateToObject?: (type: 'period' | 'event' | 'scene', id: string) => void;
+  showNewlines?: boolean;
+  onReparse?: (messageId: string) => void;
 }) {
+  const [showActions, setShowActions] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const isError = message.role === 'error';
+  const isAI = message.role === 'assistant';
   const isPending = message.pending || false;
   const hasLink = message.metadata?.linkTo && onNavigateToObject;
 
   const handleClick = () => {
     if (hasLink) {
       onNavigateToObject(message.metadata!.linkTo!.type, message.metadata!.linkTo!.id);
+    } else {
+      setShowActions(!showActions);
     }
   };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleReparse = () => {
+    if (onReparse) {
+      onReparse(message.id);
+      setShowActions(false);
+    }
+  };
+
+  // Process content for newline visibility
+  const displayContent = showNewlines
+    ? message.content.replace(/\n/g, '↵\n')
+    : message.content;
 
   return (
     <div style={{
@@ -425,24 +481,65 @@ function MessageBubble({
           ⚠️ ERROR
         </div>
       )}
-      <div
-        onClick={hasLink ? handleClick : undefined}
-        style={{
-          padding: isSystem ? '0.5rem' : isError ? '1rem' : '0.75rem 1rem',
-          background: isSystem ? 'transparent' : isError ? '#ffebee' : isUser ? '#1976d2' : '#f0f0f0',
-          color: isSystem ? '#666' : isError ? '#c62828' : isUser ? 'white' : '#000',
-          borderRadius: '8px',
-          fontStyle: isSystem ? 'italic' : 'normal',
-          fontSize: isSystem ? '0.875rem' : '1rem',
-          border: isSystem ? '1px dashed #ddd' : isError ? '2px solid #ef5350' : 'none',
-          width: '100%',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-          cursor: hasLink ? 'pointer' : 'default',
-          textDecoration: hasLink ? 'underline' : 'none',
-        }}
-      >
-        {message.content}
+      <div style={{ width: '100%' }}>
+        <div
+          onClick={handleClick}
+          style={{
+            padding: isSystem ? '0.5rem' : isError ? '1rem' : '0.75rem 1rem',
+            background: isSystem ? 'transparent' : isError ? '#ffebee' : isUser ? '#1976d2' : '#f0f0f0',
+            color: isSystem ? '#666' : isError ? '#c62828' : isUser ? 'white' : '#000',
+            borderRadius: '8px',
+            fontStyle: isSystem ? 'italic' : 'normal',
+            fontSize: isSystem ? '0.875rem' : '1rem',
+            border: isSystem ? '1px dashed #ddd' : isError ? '2px solid #ef5350' : 'none',
+            width: '100%',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            cursor: hasLink ? 'pointer' : 'pointer',
+            textDecoration: hasLink ? 'underline' : 'none',
+          }}
+        >
+          {displayContent}
+        </div>
+        {showActions && !isPending && (
+          <div style={{
+            marginTop: '0.5rem',
+            display: 'flex',
+            gap: '0.5rem',
+            flexWrap: 'wrap',
+          }}>
+            <button
+              onClick={handleCopy}
+              style={{
+                padding: '0.375rem 0.75rem',
+                background: copied ? '#4caf50' : '#f0f0f0',
+                color: copied ? 'white' : '#333',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '0.75rem',
+              }}
+            >
+              {copied ? '✓ Copied!' : '📋 Copy'}
+            </button>
+            {isAI && onReparse && (
+              <button
+                onClick={handleReparse}
+                style={{
+                  padding: '0.375rem 0.75rem',
+                  background: '#f0f0f0',
+                  color: '#333',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                }}
+              >
+                🔄 Reparse
+              </button>
+            )}
+          </div>
+        )}
       </div>
       <div style={{
         fontSize: '0.625rem',
