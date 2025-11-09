@@ -65,7 +65,7 @@ export default function GamePage() {
     );
   }
 
-  const handleAICommand = async (command: ParsedCommand, currentConversationId: string) => {
+  const handleAICommand = async (command: ParsedCommand, currentConversationId: string, remainingMessage?: string) => {
     const metaConversationId = gameState.metaConversationId;
 
     switch (command.type) {
@@ -92,6 +92,16 @@ export default function GamePage() {
               },
             },
           });
+
+          // Teleport remaining message to period's conversation
+          if (remainingMessage) {
+            addMessage(period.conversationId, {
+              role: 'assistant',
+              playerId: 'ai-1',
+              playerName: 'AI Player',
+              content: remainingMessage,
+            });
+          }
         }, 100);
         break;
       }
@@ -178,6 +188,16 @@ export default function GamePage() {
               },
             },
           });
+
+          // Teleport remaining message to event's conversation
+          if (remainingMessage) {
+            addMessage(event.conversationId, {
+              role: 'assistant',
+              playerId: 'ai-1',
+              playerName: 'AI Player',
+              content: remainingMessage,
+            });
+          }
         }, 100);
         break;
       }
@@ -312,6 +332,42 @@ export default function GamePage() {
     return null;
   };
 
+  /**
+   * Shared function to process AI response and handle commands
+   * Used by both initial response and reparse functionality
+   */
+  const processAIResponse = async (responseContent: string, conversationId: string) => {
+    // Parse AI response for commands
+    const parsed = parseAIResponse(responseContent);
+
+    // Determine if we have create commands that should teleport the message
+    const hasCreateCommand = parsed.commands.some(cmd =>
+      cmd.type === 'create-period' ||
+      cmd.type === 'create-event' ||
+      cmd.type === 'create-scene'
+    );
+
+    // Handle all commands
+    if (parsed.commands.length > 0 && parsed.commands[0].type !== 'none') {
+      for (const command of parsed.commands) {
+        if (command.type !== 'none') {
+          // Pass remaining message only to create commands for teleporting
+          const shouldTeleport = (command.type === 'create-period' ||
+                                  command.type === 'create-event' ||
+                                  command.type === 'create-scene') &&
+                                 hasCreateCommand;
+          await handleAICommand(
+            command,
+            conversationId,
+            shouldTeleport ? parsed.remainingMessage : undefined
+          );
+        }
+      }
+    }
+
+    return parsed;
+  };
+
   const handleReparseMessage = async (messageId: string) => {
     if (!gameState.currentSelection) return;
 
@@ -325,25 +381,17 @@ export default function GamePage() {
     const message = conversation.messages.find(m => m.id === messageId);
     if (!message || message.role !== 'assistant') return;
 
-    // Parse the message content for commands
-    const parsed = parseAIResponse(message.content);
+    // Process using the EXACT same code path as initial response
+    const parsed = await processAIResponse(message.content, conversationId);
 
-    // Handle all commands
+    // Add a system message indicating reparse
     if (parsed.commands.length > 0 && parsed.commands[0].type !== 'none') {
-      for (const command of parsed.commands) {
-        if (command.type !== 'none') {
-          await handleAICommand(command, conversationId);
-        }
-      }
-
-      // Add a system message indicating reparse
       addMessage(conversationId, {
         role: 'system',
         playerId: 'system',
         content: `Reparsed AI message - found ${parsed.commands.length} command(s)`,
       });
     } else {
-      // No commands found
       addMessage(conversationId, {
         role: 'system',
         playerId: 'system',
@@ -428,9 +476,6 @@ export default function GamePage() {
       // SUCCESS: Update pending message to non-pending
       updateMessage(conversationId, pendingMessageId, { pending: false });
 
-      // Parse AI response for commands
-      const parsed = parseAIResponse(data.response);
-
       // Always add the full AI response to conversation (for debugging)
       addMessage(conversationId, {
         role: 'assistant',
@@ -439,14 +484,8 @@ export default function GamePage() {
         content: data.response,
       });
 
-      // Handle all commands
-      if (parsed.commands.length > 0 && parsed.commands[0].type !== 'none') {
-        for (const command of parsed.commands) {
-          if (command.type !== 'none') {
-            await handleAICommand(command, conversationId);
-          }
-        }
-      }
+      // Process AI response using the EXACT same code path as reparse
+      await processAIResponse(data.response, conversationId);
     } catch (error: any) {
       console.error('Failed to get AI response:', error);
       const errorMessage = error?.message || 'Unknown error occurred';
