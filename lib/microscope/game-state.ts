@@ -95,7 +95,13 @@ export function useGameState(initialGameId?: string) {
     }
   }, [gameState, isLoaded]);
 
-  const addPeriod = useCallback((title: string, description: string, tone: 'light' | 'dark', isBookend: boolean = false): string | null => {
+  const addPeriod = useCallback((
+    title: string,
+    description: string,
+    tone: 'light' | 'dark',
+    isBookend: boolean = false,
+    placement?: { type: 'first' } | { type: 'after' | 'before', relativeTo: string }
+  ): string | null => {
     let createdId: string | null = null;
     setGameState((prev) => {
       if (!prev) return prev;
@@ -104,19 +110,48 @@ export function useGameState(initialGameId?: string) {
       const periodId = crypto.randomUUID();
       createdId = periodId;
 
+      // Determine the insertion index based on placement
+      let insertIndex = prev.periods.length; // Default: append to end
+
+      if (placement) {
+        if (placement.type === 'first') {
+          // Find first non-bookend period
+          insertIndex = prev.periods.findIndex(p => !p.isBookend);
+          if (insertIndex === -1) insertIndex = prev.periods.length;
+        } else {
+          // Find the referenced period
+          const referencePeriod = prev.periods.find(p =>
+            p.title.toLowerCase() === placement.relativeTo.toLowerCase()
+          );
+          if (referencePeriod) {
+            const refIndex = prev.periods.indexOf(referencePeriod);
+            insertIndex = placement.type === 'after' ? refIndex + 1 : refIndex;
+          }
+        }
+      }
+
       const period: Period = {
         id: periodId,
         title,
         description,
         tone,
         conversationId,
-        order: prev.periods.length,
+        order: 0, // Will be recalculated below
         isBookend,
       };
 
+      // Insert period at the calculated index
+      const newPeriods = [...prev.periods];
+      newPeriods.splice(insertIndex, 0, period);
+
+      // Recalculate order for all periods
+      newPeriods.forEach((p, idx) => {
+        p.order = idx;
+      });
+
       return {
         ...prev,
-        periods: [...prev.periods, period],
+        periods: newPeriods,
         conversations: {
           ...prev.conversations,
           [conversationId]: {

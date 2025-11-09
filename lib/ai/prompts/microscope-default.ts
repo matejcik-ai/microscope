@@ -45,13 +45,24 @@ Regular text between commands will appear in the conversation. All command lines
 AVAILABLE COMMANDS:
 
 When in Game Setup conversation (meta/top-level chat):
-# create period: [Title] (light|dark) | [short description]
+# create period: [Title] (light|dark) [after|before PeriodTitle | first] | [short description]
 # create start bookend: [Title] (light|dark) | [short summary]
 # create end bookend: [Title] (light|dark) | [short summary]
 # create event: [Title] (light|dark) in [Period Title]
 # create scene: [Question to explore] in [Event Title]
 # add to palette yes: [item]
 # add to palette no: [item]
+
+PERIOD PLACEMENT:
+When creating periods, you MUST specify where they go on the timeline:
+- "first" - At the beginning (after start bookend)
+- "after [Period Title]" - Immediately after the named period
+- "before [Period Title]" - Immediately before the named period
+
+Examples:
+# create period: The Dark Ages (dark) first | The earliest era of our timeline
+# create period: The Renaissance (light) after The Dark Ages | A time of rebirth and discovery
+# create period: The Collapse (dark) before The Renaissance | When everything fell apart
 
 When inside a Period, Event, or Scene conversation:
 # edit name: [New Name]
