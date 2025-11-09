@@ -481,7 +481,7 @@ function MessageBubble({
           ⚠️ ERROR
         </div>
       )}
-      <div style={{ width: '100%' }}>
+      <div style={{ width: '100%', boxSizing: 'border-box' }}>
         <div
           onClick={handleClick}
           style={{
@@ -492,11 +492,11 @@ function MessageBubble({
             fontStyle: isSystem ? 'italic' : 'normal',
             fontSize: isSystem ? '0.875rem' : '1rem',
             border: isSystem ? '1px dashed #ddd' : isError ? '2px solid #ef5350' : 'none',
-            width: '100%',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
             cursor: hasLink ? 'pointer' : 'pointer',
             textDecoration: hasLink ? 'underline' : 'none',
+            boxSizing: 'border-box',
           }}
         >
           {displayContent}
