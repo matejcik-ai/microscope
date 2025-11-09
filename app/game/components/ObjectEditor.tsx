@@ -7,9 +7,10 @@ interface ObjectEditorProps {
   type: 'period' | 'event' | 'scene';
   object: Period | Event | Scene;
   onUpdate: (updates: Partial<Period | Event | Scene>) => void;
+  onDelete?: () => void;
 }
 
-export default function ObjectEditor({ type, object, onUpdate }: ObjectEditorProps) {
+export default function ObjectEditor({ type, object, onUpdate, onDelete }: ObjectEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState('title' in object ? object.title : '');
   const [description, setDescription] = useState('description' in object ? object.description : '');
@@ -79,21 +80,44 @@ export default function ObjectEditor({ type, object, onUpdate }: ObjectEditorPro
           {getTypeLabel()} Details
         </div>
         {!isEditing && (
-          <button
-            onClick={() => setIsEditing(true)}
-            style={{
-              padding: '0.25rem 0.75rem',
-              background: '#1976d2',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '0.75rem',
-              fontWeight: '600',
-            }}
-          >
-            Edit
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={() => setIsEditing(true)}
+              style={{
+                padding: '0.25rem 0.75rem',
+                background: '#1976d2',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+              }}
+            >
+              Edit
+            </button>
+            {onDelete && (
+              <button
+                onClick={() => {
+                  if (confirm(`Delete this ${getTypeLabel().toLowerCase()}? This cannot be undone.`)) {
+                    onDelete();
+                  }
+                }}
+                style={{
+                  padding: '0.25rem 0.75rem',
+                  background: '#d32f2f',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                }}
+              >
+                Delete
+              </button>
+            )}
+          </div>
         )}
       </div>
 

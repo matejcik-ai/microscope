@@ -404,6 +404,87 @@ export function useGameState(initialGameId?: string) {
   }, [gameState]);
 
 
+  const deletePeriod = useCallback((id: string) => {
+    setGameState((prev) => {
+      if (!prev) return prev;
+
+      const period = prev.periods.find(p => p.id === id);
+      if (!period) return prev;
+
+      // Remove period and its conversation
+      const { [period.conversationId]: _, ...remainingConversations } = prev.conversations;
+
+      // Remove all events in this period and their conversations
+      const eventsToRemove = prev.events.filter(e => e.periodId === id);
+      const eventConvIds = eventsToRemove.map(e => e.conversationId);
+      const filteredConversations = Object.fromEntries(
+        Object.entries(remainingConversations).filter(([k]) => !eventConvIds.includes(k))
+      );
+
+      // Remove all scenes in those events and their conversations
+      const scenesToRemove = prev.scenes.filter(s => eventsToRemove.some(e => e.id === s.eventId));
+      const sceneConvIds = scenesToRemove.map(s => s.conversationId);
+      const finalConversations = Object.fromEntries(
+        Object.entries(filteredConversations).filter(([k]) => !sceneConvIds.includes(k))
+      );
+
+      return {
+        ...prev,
+        periods: prev.periods.filter(p => p.id !== id),
+        events: prev.events.filter(e => e.periodId !== id),
+        scenes: prev.scenes.filter(s => !eventsToRemove.some(e => e.id === s.eventId)),
+        conversations: finalConversations,
+        currentSelection: prev.currentSelection?.id === id ? undefined : prev.currentSelection,
+      };
+    });
+  }, []);
+
+  const deleteEvent = useCallback((id: string) => {
+    setGameState((prev) => {
+      if (!prev) return prev;
+
+      const event = prev.events.find(e => e.id === id);
+      if (!event) return prev;
+
+      // Remove event and its conversation
+      const { [event.conversationId]: _, ...remainingConversations } = prev.conversations;
+
+      // Remove all scenes in this event and their conversations
+      const scenesToRemove = prev.scenes.filter(s => s.eventId === id);
+      const sceneConvIds = scenesToRemove.map(s => s.conversationId);
+      const finalConversations = Object.fromEntries(
+        Object.entries(remainingConversations).filter(([k]) => !sceneConvIds.includes(k))
+      );
+
+      return {
+        ...prev,
+        events: prev.events.filter(e => e.id !== id),
+        scenes: prev.scenes.filter(s => s.eventId !== id),
+        conversations: finalConversations,
+        currentSelection: prev.currentSelection?.id === id ? undefined : prev.currentSelection,
+      };
+    });
+  }, []);
+
+  const deleteScene = useCallback((id: string) => {
+    setGameState((prev) => {
+      if (!prev) return prev;
+
+      const scene = prev.scenes.find(s => s.id === id);
+      if (!scene) return prev;
+
+      // Remove scene and its conversation
+      const { [scene.conversationId]: _, ...remainingConversations } = prev.conversations;
+
+      return {
+        ...prev,
+        scenes: prev.scenes.filter(s => s.id !== id),
+        conversations: remainingConversations,
+        currentSelection: prev.currentSelection?.id === id ? undefined : prev.currentSelection,
+      };
+    });
+  }, []);
+
   const reset = useCallback(() => {
     if (!currentGameId) return;
     const newGame = createEmptyGameState(currentGameId);
@@ -443,6 +524,9 @@ export function useGameState(initialGameId?: string) {
     updatePalette,
     setSelection,
     getSelectedConversation,
+    deletePeriod,
+    deleteEvent,
+    deleteScene,
     reset,
     switchGame,
     createNewGame,

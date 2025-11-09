@@ -32,6 +32,9 @@ export default function GamePage() {
     updatePalette,
     setSelection,
     getSelectedConversation,
+    deletePeriod,
+    deleteEvent,
+    deleteScene,
     switchGame,
     createNewGame,
   } = useGameState();
@@ -634,6 +637,128 @@ export default function GamePage() {
     }
   };
 
+  const handleDeleteObject = () => {
+    if (!gameState.currentSelection) return;
+
+    const { type, id } = gameState.currentSelection;
+
+    if (type === 'period') {
+      deletePeriod(id);
+    } else if (type === 'event') {
+      deleteEvent(id);
+    } else if (type === 'scene') {
+      deleteScene(id);
+    }
+  };
+
+  const handleEditMessage = (messageId: string, newContent: string) => {
+    const conversation = getSelectedConversation();
+    if (!conversation) return;
+
+    updateMessage(conversation.id, messageId, { content: newContent });
+  };
+
+  const handleRerunFromMessage = async (messageId: string) => {
+    if (!gameState.currentSelection) return;
+
+    // Check if API key is set
+    if (!apiSettings?.apiKey) {
+      setShowAPISettings(true);
+      return;
+    }
+
+    const conversationId = getConversationId();
+    if (!conversationId) return;
+
+    const conversation = gameState.conversations[conversationId];
+    if (!conversation) return;
+
+    // Find the message to rerun from
+    const messageIndex = conversation.messages.findIndex(m => m.id === messageId);
+    if (messageIndex === -1) return;
+
+    const message = conversation.messages[messageIndex];
+
+    // Delete all messages after (and including, if it's an AI message)
+    let deleteFromIndex = messageIndex;
+    if (message.role === 'assistant') {
+      // If rerunning from AI message, delete it and regenerate
+      deleteFromIndex = messageIndex;
+    } else if (message.role === 'user') {
+      // If rerunning from user message, delete all after and regenerate AI response
+      deleteFromIndex = messageIndex + 1;
+    } else {
+      // Can't rerun from system/error messages
+      return;
+    }
+
+    const messagesToDelete = conversation.messages.slice(deleteFromIndex);
+    for (const msg of messagesToDelete) {
+      removeMessage(conversationId, msg.id);
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Build messages for API
+      const messages = conversation.messages
+        .slice(0, deleteFromIndex)
+        .map(m => ({
+          role: m.role,
+          content: m.content,
+        }));
+
+      // Build game context
+      const gameContext = {
+        bigPicture: gameState.setup.bigPicture,
+        bookends: gameState.setup.bookends,
+        palette: gameState.setup.palette,
+        currentContext: getCurrentContext(),
+      };
+
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages,
+          gameState,
+          gameContext,
+          apiSettings: apiSettings,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API Error:', errorData);
+        throw new Error(errorData.details || errorData.error || 'Failed to get AI response');
+      }
+
+      const data = await response.json();
+
+      // Add the AI response
+      addMessage(conversationId, {
+        role: 'assistant',
+        playerId: 'ai-1',
+        playerName: 'AI Player',
+        content: data.response,
+      });
+
+      // Process AI response
+      await processAIResponse(data.response, conversationId);
+    } catch (error: any) {
+      console.error('Failed to rerun from message:', error);
+      const errorMessage = error?.message || 'Unknown error occurred';
+
+      addMessage(conversationId, {
+        role: 'error',
+        playerId: 'system',
+        content: `${errorMessage}\n\nPlease check:\n• Your API key is correct\n• You have available API credits\n• The selected model is available\n• Your internet connection is working`,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div style={{
       height: '100dvh',
@@ -829,7 +954,10 @@ export default function GamePage() {
             isLoading={isLoading}
             selectedObject={getSelectedObject()}
             onUpdateObject={handleUpdateObject}
+            onDeleteObject={handleDeleteObject}
             onReparseMessage={handleReparseMessage}
+            onEditMessage={handleEditMessage}
+            onRerunFromMessage={handleRerunFromMessage}
           />
         </div>
       </div>
