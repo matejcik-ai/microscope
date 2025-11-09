@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useGameState } from '@/lib/microscope/game-state';
 import { saveAPISettings, loadAPISettings } from '@/lib/microscope/storage';
-import { parseAIResponse } from '@/lib/microscope/command-parser';
+import { parseAIResponse, type ParsedResponse, type ParsedCommand } from '@/lib/microscope/command-parser';
 import Timeline from './components/Timeline';
 import ConversationView from './components/Conversation';
 import APISettingsModal from './components/APISettingsModal';
@@ -65,14 +65,35 @@ export default function GamePage() {
     );
   }
 
-  const handleAICommand = async (parsed: any, currentConversationId: string) => {
+  const handleAICommand = async (command: ParsedCommand, currentConversationId: string) => {
     const metaConversationId = gameState.metaConversationId;
 
-    switch (parsed.type) {
+    switch (command.type) {
       case 'create-period':
       case 'create-bookend-period': {
-        const { title, tone, description } = parsed.data;
-        const isBookend = parsed.type === 'create-bookend-period';
+        const { title, tone, description, position } = command.data;
+        const isBookend = command.type === 'create-bookend-period';
+
+        // Check if we're editing an existing bookend
+        if (isBookend) {
+          const existingBookend = gameState.periods.find(p =>
+            p.isBookend && (
+              (position === 'start' && p.id === gameState.setup.bookends?.start) ||
+              (position === 'end' && p.id === gameState.setup.bookends?.end)
+            )
+          );
+
+          if (existingBookend) {
+            // Edit existing bookend
+            updatePeriod(existingBookend.id, { title, description, tone });
+            addMessage(currentConversationId, {
+              role: 'system',
+              playerId: 'system',
+              content: `Updated ${position} bookend: ${title}`,
+            });
+            break;
+          }
+        }
 
         // Create the period
         addPeriod(title, description, tone, isBookend);
@@ -98,22 +119,12 @@ export default function GamePage() {
               },
             },
           });
-
-          // For non-bookend periods, teleport remaining message to period's conversation
-          if (!isBookend && parsed.remainingMessage) {
-            addMessage(period.conversationId, {
-              role: 'assistant',
-              playerId: 'ai-1',
-              playerName: 'AI Player',
-              content: parsed.remainingMessage,
-            });
-          }
         }, 100);
         break;
       }
 
       case 'create-event': {
-        const { title, tone, periodTitle } = parsed.data;
+        const { title, tone, periodTitle } = command.data;
         const period = findPeriodByTitle(periodTitle);
 
         if (!period) {
@@ -146,22 +157,12 @@ export default function GamePage() {
               },
             },
           });
-
-          // Teleport remaining message to event's conversation
-          if (parsed.remainingMessage) {
-            addMessage(event.conversationId, {
-              role: 'assistant',
-              playerId: 'ai-1',
-              playerName: 'AI Player',
-              content: parsed.remainingMessage,
-            });
-          }
         }, 100);
         break;
       }
 
       case 'add-palette': {
-        const { category, item } = parsed.data;
+        const { category, item } = command.data;
         addPaletteItem(category, item);
 
         // Add confirmation to current conversation
@@ -173,9 +174,121 @@ export default function GamePage() {
         break;
       }
 
+      case 'edit-name': {
+        const { newName } = command.data;
+        const currentObject = getCurrentObject(currentConversationId);
+
+        if (!currentObject) {
+          addMessage(currentConversationId, {
+            role: 'error',
+            playerId: 'system',
+            content: 'Cannot edit name: Not in an object conversation',
+          });
+          return;
+        }
+
+        // Update the appropriate object
+        if (currentObject.type === 'period') {
+          updatePeriod(currentObject.id, { title: newName });
+        } else if (currentObject.type === 'event') {
+          updateEvent(currentObject.id, { title: newName });
+        } else if (currentObject.type === 'scene') {
+          updateScene(currentObject.id, { question: newName });
+        }
+
+        addMessage(currentConversationId, {
+          role: 'system',
+          playerId: 'system',
+          content: `Updated name to: ${newName}`,
+        });
+        break;
+      }
+
+      case 'edit-description': {
+        const { newDescription } = command.data;
+        const currentObject = getCurrentObject(currentConversationId);
+
+        if (!currentObject) {
+          addMessage(currentConversationId, {
+            role: 'error',
+            playerId: 'system',
+            content: 'Cannot edit description: Not in an object conversation',
+          });
+          return;
+        }
+
+        // Update the appropriate object
+        if (currentObject.type === 'period') {
+          updatePeriod(currentObject.id, { description: newDescription });
+        } else if (currentObject.type === 'event') {
+          updateEvent(currentObject.id, { description: newDescription });
+        } else if (currentObject.type === 'scene') {
+          addMessage(currentConversationId, {
+            role: 'error',
+            playerId: 'system',
+            content: 'Scenes do not have descriptions',
+          });
+          return;
+        }
+
+        addMessage(currentConversationId, {
+          role: 'system',
+          playerId: 'system',
+          content: `Updated description`,
+        });
+        break;
+      }
+
+      case 'edit-tone': {
+        const { newTone } = command.data;
+        const currentObject = getCurrentObject(currentConversationId);
+
+        if (!currentObject) {
+          addMessage(currentConversationId, {
+            role: 'error',
+            playerId: 'system',
+            content: 'Cannot edit tone: Not in an object conversation',
+          });
+          return;
+        }
+
+        // Update the appropriate object
+        if (currentObject.type === 'period') {
+          updatePeriod(currentObject.id, { tone: newTone });
+        } else if (currentObject.type === 'event') {
+          updateEvent(currentObject.id, { tone: newTone });
+        } else if (currentObject.type === 'scene') {
+          updateScene(currentObject.id, { tone: newTone });
+        }
+
+        addMessage(currentConversationId, {
+          role: 'system',
+          playerId: 'system',
+          content: `Updated tone to: ${newTone}`,
+        });
+        break;
+      }
+
       default:
         break;
     }
+  };
+
+  // Helper function to get current object from conversation ID
+  const getCurrentObject = (conversationId: string): { type: 'period' | 'event' | 'scene', id: string } | null => {
+    // Check periods
+    const period = gameState.periods.find(p => p.conversationId === conversationId);
+    if (period) return { type: 'period', id: period.id };
+
+    // Check events (stored at top level in gameState)
+    const event = gameState.events.find(e => e.conversationId === conversationId);
+    if (event) return { type: 'event', id: event.id };
+
+    // Check scenes (stored at top level in gameState)
+    const scene = gameState.scenes.find(s => s.conversationId === conversationId);
+    if (scene) return { type: 'scene', id: scene.id };
+
+    return null;
   };
 
   const handleSendMessage = async (content: string) => {
@@ -257,17 +370,21 @@ export default function GamePage() {
       // Parse AI response for commands
       const parsed = parseAIResponse(data.response);
 
-      // Handle commands
-      if (parsed.type !== 'none') {
-        await handleAICommand(parsed, conversationId);
-      } else {
-        // No command - add normal AI response
-        addMessage(conversationId, {
-          role: 'assistant',
-          playerId: 'ai-1',
-          playerName: 'AI Player',
-          content: data.response,
-        });
+      // Always add the full AI response to conversation (for debugging)
+      addMessage(conversationId, {
+        role: 'assistant',
+        playerId: 'ai-1',
+        playerName: 'AI Player',
+        content: data.response,
+      });
+
+      // Handle all commands
+      if (parsed.commands.length > 0 && parsed.commands[0].type !== 'none') {
+        for (const command of parsed.commands) {
+          if (command.type !== 'none') {
+            await handleAICommand(command, conversationId);
+          }
+        }
       }
     } catch (error: any) {
       console.error('Failed to get AI response:', error);
