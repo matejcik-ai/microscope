@@ -197,13 +197,17 @@ export function useGameState(initialGameId?: string) {
     ) || null;
   }, [gameState]);
 
-  const addEvent = useCallback((periodId: string, title: string, description: string, tone: 'light' | 'dark') => {
+  const addEvent = useCallback((periodId: string, title: string, description: string, tone: 'light' | 'dark'): string | null => {
+    let createdId: string | null = null;
     setGameState((prev) => {
       if (!prev) return prev;
 
       const conversationId = crypto.randomUUID();
+      const eventId = crypto.randomUUID();
+      createdId = eventId;
+
       const event: Event = {
-        id: crypto.randomUUID(),
+        id: eventId,
         periodId,
         title,
         description,
@@ -224,6 +228,7 @@ export function useGameState(initialGameId?: string) {
         },
       };
     });
+    return createdId;
   }, []);
 
   const addMessage = useCallback((conversationId: string, message: Omit<Message, 'id' | 'timestamp'>) => {
