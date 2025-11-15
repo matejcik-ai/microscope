@@ -1,5 +1,13 @@
 /**
  * Parse AI commands from responses and extract object creation/editing instructions
+ *
+ * Spec: Commands use uppercase keywords (case-insensitive matching):
+ * - CREATE PERIOD name FIRST|LAST|AFTER item|BEFORE item TONE light|dark DESCRIPTION short
+ * - CREATE EVENT name IN period FIRST|LAST|AFTER item|BEFORE item TONE light|dark DESCRIPTION short
+ * - CREATE SCENE name IN event FIRST|LAST|AFTER item|BEFORE item TONE light|dark QUESTION q ANSWER a DESCRIPTION short
+ * - CREATE PALETTE with YES/NO list
+ *
+ * Expanded descriptions come after a blank line.
  */
 
 export interface ParsedCommand {
@@ -17,77 +25,430 @@ export interface ParsedResponse {
 /**
  * Parse an AI response for commands
  *
- * Commands can be:
- * 1. Single command on first line (legacy support)
- * 2. Multiple commands, each prefixed with # on its own line
+ * New spec format:
+ * - Commands start with CREATE keyword (case-insensitive)
+ * - No # prefix required
+ * - Expanded description comes after blank line
+ * - Multiple commands separated by blank lines
  *
- * Supported commands:
- * - # create period: Title (light|dark) [after|before PeriodTitle | first] | Description
- * - # create start bookend: Title (light|dark) | Summary
- * - # create end bookend: Title (light|dark) | Summary
- * - # create event: Title (light|dark) in Period Title
- * - # create scene: Question in Event Title
- * - # add to palette yes: item
- * - # add to palette no: item
- * - # edit name: New Name
- * - # edit description: New Description
- * - # edit tone: light|dark
+ * Legacy format (backward compatibility):
+ * - Commands prefixed with #
+ * - Old syntax: # create period: Title (tone) placement | Description
  */
 export function parseAIResponse(response: string): ParsedResponse {
-  const lines = response.split('\n');
   const commands: ParsedCommand[] = [];
-  const nonCommandLines: string[] = [];
-  let isFirstLine = true;
+  let remainingMessage = '';
 
-  // Check if any lines start with #
-  const hasHashCommands = lines.some(line => line.trim().startsWith('#'));
+  // Split response into blocks separated by blank lines
+  const blocks = splitIntoBlocks(response);
 
-  for (const line of lines) {
-    const trimmedLine = line.trim();
+  // Process blocks, checking if each is a command
+  // If it is, check if the next block is the expanded description
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
+    const lines = block.lines;
+    if (lines.length === 0) continue;
 
-    // If we have hash commands, only process lines starting with #
-    // Otherwise, only process first line as command (legacy support)
-    const shouldTryParse = hasHashCommands
-      ? trimmedLine.startsWith('#')
-      : isFirstLine;
+    const firstLine = lines[0].trim();
 
-    if (shouldTryParse) {
-      // Remove # prefix if present
-      const commandLine = trimmedLine.startsWith('#')
-        ? trimmedLine.substring(1).trim()
-        : trimmedLine;
+    // Try to parse as a command
+    const parsedCommand = parseSingleCommand(firstLine);
 
-      const parsedCommand = parseSingleCommand(commandLine);
+    if (parsedCommand.type !== 'none') {
+      // Command found! Check if next block is the expanded description
+      const nextBlock = i + 1 < blocks.length ? blocks[i + 1] : null;
 
-      if (parsedCommand.type !== 'none') {
-        commands.push(parsedCommand);
-      } else if (!hasHashCommands && isFirstLine) {
-        // Legacy mode: first line didn't match any command, treat everything as message
-        nonCommandLines.push(line);
-      } else if (!trimmedLine.startsWith('#')) {
-        // Not a command line, keep it
-        nonCommandLines.push(line);
+      if (nextBlock) {
+        const nextFirstLine = nextBlock.lines[0]?.trim() || '';
+        const nextParsed = parseSingleCommand(nextFirstLine);
+
+        // If next block is NOT a command, treat it as expanded description
+        if (nextParsed.type === 'none') {
+          const expandedDescription = nextBlock.original.trim();
+          if (expandedDescription && parsedCommand.data) {
+            parsedCommand.data.expandedDescription = expandedDescription;
+          }
+          // Skip the next block since we've consumed it
+          i++;
+        }
       }
+
+      commands.push(parsedCommand);
     } else {
-      // Not a command line, keep it
-      nonCommandLines.push(line);
+      // Not a command, add to remaining message
+      if (remainingMessage) {
+        remainingMessage += '\n\n';
+      }
+      remainingMessage += block.original;
     }
-
-    isFirstLine = false;
   }
-
-  const remainingMessage = nonCommandLines.join('\n').trim();
 
   return {
     commands: commands.length > 0 ? commands : [{ type: 'none' }],
-    remainingMessage: remainingMessage || undefined,
+    remainingMessage: remainingMessage.trim() || undefined,
   };
 }
 
 /**
- * Parse a single command line (without # prefix)
+ * Split response into blocks separated by blank lines
+ * Returns array of blocks with their lines and original text
+ */
+function splitIntoBlocks(response: string): Array<{ lines: string[], original: string }> {
+  const allLines = response.split('\n');
+  const blocks: Array<{ lines: string[], original: string }> = [];
+  let currentBlock: string[] = [];
+
+  for (const line of allLines) {
+    const trimmed = line.trim();
+
+    if (trimmed === '') {
+      // Blank line - end current block if it has content
+      if (currentBlock.length > 0) {
+        blocks.push({
+          lines: [...currentBlock],
+          original: currentBlock.join('\n')
+        });
+        currentBlock = [];
+      }
+    } else {
+      currentBlock.push(line);
+    }
+  }
+
+  // Don't forget the last block
+  if (currentBlock.length > 0) {
+    blocks.push({
+      lines: [...currentBlock],
+      original: currentBlock.join('\n')
+    });
+  }
+
+  return blocks;
+}
+
+/**
+ * Parse a single command line
+ *
+ * Supports both new spec format and legacy format for backward compatibility.
  */
 function parseSingleCommand(commandLine: string): ParsedCommand {
+  const trimmed = commandLine.trim();
+
+  // Remove legacy # prefix if present
+  const line = trimmed.startsWith('#') ? trimmed.substring(1).trim() : trimmed;
+
+  // Try new spec format first
+  const newFormatResult = parseNewFormat(line);
+  if (newFormatResult.type !== 'none') {
+    return newFormatResult;
+  }
+
+  // Fall back to legacy format for backward compatibility
+  return parseLegacyFormat(line);
+}
+
+/**
+ * Parse new spec format commands
+ *
+ * CREATE PERIOD name FIRST|LAST|AFTER item|BEFORE item TONE light|dark DESCRIPTION short
+ * CREATE EVENT name IN period FIRST|LAST|AFTER item|BEFORE item TONE light|dark DESCRIPTION short
+ * CREATE SCENE name IN event FIRST|LAST|AFTER item|BEFORE item TONE light|dark QUESTION q ANSWER a DESCRIPTION short
+ * CREATE PALETTE
+ */
+function parseNewFormat(line: string): ParsedCommand {
+  // CREATE PALETTE - special format
+  if (/^CREATE\s+PALETTE$/i.test(line)) {
+    return {
+      type: 'add-palette',
+      data: {
+        category: 'palette', // Will be populated by subsequent lines
+        items: [], // Will be populated by subsequent lines
+      },
+    };
+  }
+
+  // CREATE PERIOD
+  const periodResult = parseCreatePeriod(line);
+  if (periodResult.type !== 'none') return periodResult;
+
+  // CREATE EVENT
+  const eventResult = parseCreateEvent(line);
+  if (eventResult.type !== 'none') return eventResult;
+
+  // CREATE SCENE
+  const sceneResult = parseCreateScene(line);
+  if (sceneResult.type !== 'none') return sceneResult;
+
+  return { type: 'none' };
+}
+
+/**
+ * Parse CREATE PERIOD command
+ * Format: CREATE PERIOD name FIRST|LAST|AFTER item|BEFORE item TONE light|dark DESCRIPTION short
+ *
+ * Special cases for bookends:
+ * - CREATE PERIOD name FIRST TONE tone DESCRIPTION desc → start bookend
+ * - CREATE PERIOD name LAST TONE tone DESCRIPTION desc → end bookend
+ */
+function parseCreatePeriod(line: string): ParsedCommand {
+  // Pattern: CREATE PERIOD <name> <placement> TONE <tone> DESCRIPTION <description>
+  // Placement can be: FIRST, LAST, AFTER <item>, BEFORE <item>
+
+  const createPeriodMatch = /^CREATE\s+PERIOD\s+(.+)$/i.exec(line);
+  if (!createPeriodMatch) return { type: 'none' };
+
+  const rest = createPeriodMatch[1];
+
+  // Extract TONE keyword and value
+  const toneMatch = /\bTONE\s+(light|dark)\b/i.exec(rest);
+  if (!toneMatch) return { type: 'none' };
+  const tone = toneMatch[1].toLowerCase() as 'light' | 'dark';
+
+  // Extract DESCRIPTION keyword and value
+  const descMatch = /\bDESCRIPTION\s+(.+)$/i.exec(rest);
+  if (!descMatch) return { type: 'none' };
+  const description = descMatch[1].trim();
+
+  // Extract name and placement (everything before TONE)
+  const beforeTone = rest.substring(0, toneMatch.index).trim();
+
+  // Parse placement and name
+  const { name, placement } = parseNameAndPlacement(beforeTone);
+  if (!name) return { type: 'none' };
+
+  // Check if this is a bookend (FIRST or LAST placement)
+  if (placement.type === 'first') {
+    return {
+      type: 'create-start-bookend',
+      data: {
+        title: name,
+        tone,
+        description,
+      },
+    };
+  }
+
+  if (placement.type === 'last') {
+    return {
+      type: 'create-end-bookend',
+      data: {
+        title: name,
+        tone,
+        description,
+      },
+    };
+  }
+
+  // Regular period
+  return {
+    type: 'create-period',
+    data: {
+      title: name,
+      tone,
+      placement: placement.type === 'none' ? undefined : placement,
+      description,
+    },
+  };
+}
+
+/**
+ * Parse CREATE EVENT command
+ * Format: CREATE EVENT name IN period FIRST|LAST|AFTER item|BEFORE item TONE light|dark DESCRIPTION short
+ */
+function parseCreateEvent(line: string): ParsedCommand {
+  const createEventMatch = /^CREATE\s+EVENT\s+(.+)$/i.exec(line);
+  if (!createEventMatch) return { type: 'none' };
+
+  const rest = createEventMatch[1];
+
+  // Extract IN keyword and parent period
+  const inMatch = /\bIN\s+(.+?)(?:\s+(?:FIRST|LAST|AFTER|BEFORE)\b|\s+TONE\b)/i.exec(rest);
+  if (!inMatch) return { type: 'none' };
+  const periodTitle = inMatch[1].trim();
+
+  // Extract TONE keyword and value
+  const toneMatch = /\bTONE\s+(light|dark)\b/i.exec(rest);
+  if (!toneMatch) return { type: 'none' };
+  const tone = toneMatch[1].toLowerCase() as 'light' | 'dark';
+
+  // Extract DESCRIPTION keyword and value
+  const descMatch = /\bDESCRIPTION\s+(.+)$/i.exec(rest);
+  if (!descMatch) return { type: 'none' };
+  const description = descMatch[1].trim();
+
+  // Extract name and placement
+  // Name is between "CREATE EVENT" and "IN"
+  const nameMatch = /^(.+?)\s+IN\s+/i.exec(rest);
+  if (!nameMatch) return { type: 'none' };
+  const nameAndMaybePlacement = nameMatch[1].trim();
+
+  // Extract placement (between period name and TONE)
+  const afterIn = rest.substring(rest.toLowerCase().indexOf(' in ') + 4);
+  const beforeTone = afterIn.substring(0, afterIn.toLowerCase().indexOf(' tone ')).trim();
+  const afterPeriodName = beforeTone.substring(periodTitle.length).trim();
+
+  const placement = parsePlacement(afterPeriodName);
+
+  return {
+    type: 'create-event',
+    data: {
+      title: nameAndMaybePlacement,
+      tone,
+      periodTitle,
+      placement: placement.type === 'none' ? undefined : placement,
+      description,
+    },
+  };
+}
+
+/**
+ * Parse CREATE SCENE command
+ * Format: CREATE SCENE name IN event FIRST|LAST|AFTER item|BEFORE item TONE light|dark QUESTION q ANSWER a DESCRIPTION short
+ */
+function parseCreateScene(line: string): ParsedCommand {
+  const createSceneMatch = /^CREATE\s+SCENE\s+(.+)$/i.exec(line);
+  if (!createSceneMatch) return { type: 'none' };
+
+  const rest = createSceneMatch[1];
+
+  // Extract IN keyword and parent event
+  const inMatch = /\bIN\s+(.+?)(?:\s+(?:FIRST|LAST|AFTER|BEFORE)\b|\s+TONE\b)/i.exec(rest);
+  if (!inMatch) return { type: 'none' };
+  const eventTitle = inMatch[1].trim();
+
+  // Extract TONE keyword and value
+  const toneMatch = /\bTONE\s+(light|dark)\b/i.exec(rest);
+  if (!toneMatch) return { type: 'none' };
+  const tone = toneMatch[1].toLowerCase() as 'light' | 'dark';
+
+  // Extract QUESTION keyword and value
+  const questionMatch = /\bQUESTION\s+(.+?)\s+ANSWER\b/i.exec(rest);
+  if (!questionMatch) return { type: 'none' };
+  const question = questionMatch[1].trim();
+
+  // Extract ANSWER keyword and value
+  const answerMatch = /\bANSWER\s+(.+?)\s+DESCRIPTION\b/i.exec(rest);
+  if (!answerMatch) return { type: 'none' };
+  const answer = answerMatch[1].trim();
+
+  // Extract DESCRIPTION keyword and value
+  const descMatch = /\bDESCRIPTION\s+(.+)$/i.exec(rest);
+  if (!descMatch) return { type: 'none' };
+  const description = descMatch[1].trim();
+
+  // Extract name and placement
+  const nameMatch = /^(.+?)\s+IN\s+/i.exec(rest);
+  if (!nameMatch) return { type: 'none' };
+  const nameAndMaybePlacement = nameMatch[1].trim();
+
+  // Extract placement (between event name and TONE)
+  const afterIn = rest.substring(rest.toLowerCase().indexOf(' in ') + 4);
+  const beforeTone = afterIn.substring(0, afterIn.toLowerCase().indexOf(' tone ')).trim();
+  const afterEventName = beforeTone.substring(eventTitle.length).trim();
+
+  const placement = parsePlacement(afterEventName);
+
+  return {
+    type: 'create-scene',
+    data: {
+      title: nameAndMaybePlacement,
+      tone,
+      eventTitle,
+      placement: placement.type === 'none' ? undefined : placement,
+      question,
+      answer,
+      description,
+    },
+  };
+}
+
+/**
+ * Parse name and placement from a string like "The Golden Age FIRST" or "War AFTER Peace"
+ * Returns the name and placement info
+ */
+function parseNameAndPlacement(text: string): {
+  name: string,
+  placement: { type: 'first' | 'last' | 'after' | 'before' | 'none', relativeTo?: string }
+} {
+  const placement = parsePlacement(text);
+
+  if (placement.type === 'none') {
+    return { name: text.trim(), placement };
+  }
+
+  // Remove placement text to get name
+  let name = text;
+
+  if (placement.type === 'first') {
+    name = text.replace(/\s+FIRST$/i, '').trim();
+  } else if (placement.type === 'last') {
+    name = text.replace(/\s+LAST$/i, '').trim();
+  } else if (placement.type === 'after' && placement.relativeTo) {
+    const afterRegex = new RegExp(`\\s+AFTER\\s+${escapeRegex(placement.relativeTo)}$`, 'i');
+    name = text.replace(afterRegex, '').trim();
+  } else if (placement.type === 'before' && placement.relativeTo) {
+    const beforeRegex = new RegExp(`\\s+BEFORE\\s+${escapeRegex(placement.relativeTo)}$`, 'i');
+    name = text.replace(beforeRegex, '').trim();
+  }
+
+  return { name, placement };
+}
+
+/**
+ * Parse placement keywords from text
+ * Supports: FIRST, LAST, AFTER <item>, BEFORE <item>
+ */
+function parsePlacement(text: string): { type: 'first' | 'last' | 'after' | 'before' | 'none', relativeTo?: string } {
+  const trimmed = text.trim();
+
+  // FIRST
+  if (/\bFIRST$/i.test(trimmed)) {
+    return { type: 'first' };
+  }
+
+  // LAST
+  if (/\bLAST$/i.test(trimmed)) {
+    return { type: 'last' };
+  }
+
+  // AFTER <item>
+  const afterMatch = /\bAFTER\s+(.+)$/i.exec(trimmed);
+  if (afterMatch) {
+    return { type: 'after', relativeTo: afterMatch[1].trim() };
+  }
+
+  // BEFORE <item>
+  const beforeMatch = /\bBEFORE\s+(.+)$/i.exec(trimmed);
+  if (beforeMatch) {
+    return { type: 'before', relativeTo: beforeMatch[1].trim() };
+  }
+
+  return { type: 'none' };
+}
+
+/**
+ * Escape regex special characters
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Parse legacy format commands (backward compatibility)
+ *
+ * Legacy formats:
+ * - create period: Title (light|dark) [after|before PeriodTitle | first] | Description
+ * - create start bookend: Title (light|dark) | Summary
+ * - create end bookend: Title (light|dark) | Summary
+ * - create event: Title (light|dark) in Period Title [placement] | Description
+ * - create scene: Question in Event Title
+ * - add to palette yes: item
+ * - add to palette no: item
+ * - edit name: New Name
+ * - edit description: New Description
+ * - edit tone: light|dark
+ */
+function parseLegacyFormat(commandLine: string): ParsedCommand {
   // Parse create period command with placement
   // Format: create period: Title (light|dark) [after|before PeriodTitle | first] | Description
   const periodMatch = commandLine.match(/^create period:\s*(.+?)\s*\((light|dark)\)\s+(after|before)\s+(.+?)\s*\|\s*(.+)$/i);

@@ -22,6 +22,7 @@ export default function GamePage() {
     findPeriodByTitle,
     findEventByTitle,
     addEvent,
+    addScene,
     addMessage,
     addMessageWithId,
     updateMessage,
@@ -29,6 +30,7 @@ export default function GamePage() {
     updatePeriod,
     updateEvent,
     updateScene,
+    updateBigPicture,
     updatePalette,
     setSelection,
     getSelectedConversation,
@@ -76,7 +78,7 @@ export default function GamePage() {
 
     switch (command.type) {
       case 'create-period': {
-        const { title, tone, description, placement } = command.data;
+        const { title, tone, description, placement, expandedDescription } = command.data;
 
         // Create the period with optional placement (AI created)
         const periodId = addPeriod(title, description, tone, false, placement, 'ai-1');
@@ -106,13 +108,13 @@ export default function GamePage() {
           },
         });
 
-        // Teleport remaining message to period's conversation
-        if (remainingMessage) {
+        // Add expanded description as first message in period's conversation
+        if (expandedDescription) {
           addMessage(period.conversationId, {
             role: 'assistant',
             playerId: 'ai-1',
             playerName: 'AI Player',
-            content: remainingMessage,
+            content: expandedDescription,
           });
         }
         break;
@@ -120,7 +122,7 @@ export default function GamePage() {
 
       case 'create-start-bookend':
       case 'create-end-bookend': {
-        const { title, tone, description } = command.data;
+        const { title, tone, description, expandedDescription } = command.data;
         const position = command.type === 'create-start-bookend' ? 'start' : 'end';
 
         // Check if we're editing an existing bookend
@@ -169,11 +171,21 @@ export default function GamePage() {
             },
           },
         });
+
+        // Add expanded description as first message in bookend's conversation
+        if (expandedDescription) {
+          addMessage(period.conversationId, {
+            role: 'assistant',
+            playerId: 'ai-1',
+            playerName: 'AI Player',
+            content: expandedDescription,
+          });
+        }
         break;
       }
 
       case 'create-event': {
-        const { title, tone, periodTitle, description } = command.data;
+        const { title, tone, periodTitle, description, expandedDescription } = command.data;
         const period = findPeriodByTitle(periodTitle);
 
         if (!period) {
@@ -214,13 +226,13 @@ export default function GamePage() {
           },
         });
 
-        // Teleport remaining message to event's conversation
-        if (remainingMessage) {
+        // Add expanded description as first message in event's conversation
+        if (expandedDescription) {
           addMessage(event.conversationId, {
             role: 'assistant',
             playerId: 'ai-1',
             playerName: 'AI Player',
-            content: remainingMessage,
+            content: expandedDescription,
           });
         }
         break;
@@ -236,6 +248,60 @@ export default function GamePage() {
           playerId: 'system',
           content: `Added to palette (${category}): ${item}`,
         });
+        break;
+      }
+
+      case 'create-scene': {
+        const { title, tone, eventTitle, question, answer, description, expandedDescription } = command.data;
+        const event = findEventByTitle(eventTitle);
+
+        if (!event) {
+          // Event not found - add error to meta conversation
+          addMessage(metaConversationId, {
+            role: 'error',
+            playerId: 'system',
+            content: `Cannot create scene: Event "${eventTitle}" not found`,
+          });
+          return;
+        }
+
+        // Create the scene (AI created)
+        const sceneId = addScene(event.id, question, answer, tone, 'ai-1');
+
+        if (!sceneId) {
+          console.error('Failed to create scene:', title);
+          break;
+        }
+
+        // Find the created scene immediately
+        const scene = gameState.scenes.find(s => s.id === sceneId);
+        if (!scene) {
+          console.error('Scene not found after creation:', sceneId);
+          break;
+        }
+
+        // Add clickable link to meta chat
+        addMessage(metaConversationId, {
+          role: 'system',
+          playerId: 'system',
+          content: `Created scene: ${question} (in ${eventTitle})`,
+          metadata: {
+            linkTo: {
+              type: 'scene',
+              id: scene.id,
+            },
+          },
+        });
+
+        // Add expanded description as first message in scene's conversation
+        if (expandedDescription) {
+          addMessage(scene.conversationId, {
+            role: 'assistant',
+            playerId: 'ai-1',
+            playerName: 'AI Player',
+            content: expandedDescription,
+          });
+        }
         break;
       }
 
@@ -990,6 +1056,7 @@ export default function GamePage() {
               }}
               selectedId={gameState.currentSelection?.id}
               selectedType={gameState.currentSelection?.type}
+              onUpdateBigPicture={updateBigPicture}
               onEditPalette={() => setShowPaletteEditor(true)}
             />
           </div>
