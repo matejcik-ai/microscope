@@ -21,31 +21,7 @@ This document summarizes the areas of the specification that need more detail be
 
 ---
 
-### 2. Concurrent Editing of Unfrozen Items
-**File**: `spec/underspecified/concurrent-editing.md`
-
-**Problem**: When AI creates an item, it starts unfrozen (AI's turn). During this phase, both human and AI might edit metadata, and they discuss in conversation. How do concurrent edits work? How does AI see human's changes?
-
-**Decisions Needed**:
-- Should AI be able to edit metadata of its unfrozen items in v1?
-- If yes, what command format for metadata updates?
-- Can human edit AI's unfrozen items? (Yes, but how is this communicated to AI?)
-- Are metadata changes shown as system messages in conversation?
-- How are changes reflected in cached context for AI?
-- Can human end turn on AI's unfrozen item?
-
-**Impact**: Affects editing workflow, AI command design, context caching
-
-**Recommendation**:
-- v1: Defer AI metadata editing (AI creates via CREATE, human edits via UI)
-- Allow human to edit AI's items freely (no ownership enforcement)
-- No system messages for metadata changes (silent updates)
-- Human can end AI's turn (explicit or implicit)
-- Optimistic updates, last write wins
-
----
-
-### 3. System Prompts - RESOLVED ✅
+### 2. System Prompts - RESOLVED ✅
 **File**: `spec/system-prompts.md`
 
 **Problem**: Spec mentions system prompts but doesn't specify exact content.
@@ -62,7 +38,7 @@ This document summarizes the areas of the specification that need more detail be
 
 ---
 
-### 4. Player Management - RESOLVED ✅
+### 3. Player Management - RESOLVED ✅
 **File**: `spec/underspecified/player-management.md`
 
 **Problem**: Spec mentions AI players with personas but not how they're created/edited.
@@ -205,7 +181,6 @@ From `spec/open-questions.md`:
 | Area | File | Priority | Blocks | Recommendation Provided | Status |
 |------|------|----------|--------|------------------------|--------|
 | Command Error Handling | `command-error-handling.md` | High | Command parser | Yes | ✅ Resolved |
-| Concurrent Editing | `concurrent-editing.md` | High | Editing workflow | Yes | Open |
 | System Prompts | `system-prompts.md` | High | API integration | Yes | ✅ Resolved |
 | Player Management | `player-management.md` | High | Setup phase | Yes | ✅ Resolved |
 | UI Design | `ui-design.md` | Medium | All UI | Yes | Open |

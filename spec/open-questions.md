@@ -2,9 +2,7 @@
 
 ## Unresolved
 
-Questions still needing Product Owner input:
-
-1. **System message format**: What's the exact format and styling for system messages in meta chat?
+None! All critical questions resolved. See underspecified areas for UI/implementation details.
 
 ## Resolved
 
