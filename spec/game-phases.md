@@ -20,38 +20,71 @@
 ## Initial Round (v1)
 **Human-driven creation of initial periods and events.**
 
-**v1 simplification**: No automatic turn management. Human controls conversation flow.
+**v1 simplification**: No automatic turn order. Human controls when to create, when to prompt AI, and when to end turn.
 
-1. **Human creates items**:
-   - Uses UI to create Period or Event
+### The One-Unfrozen-Item Rule
+
+**Critical constraint**: Only ONE item can be unfrozen at a time.
+
+- When human creates an item, it starts **unfrozen** (metadata editable)
+- Human cannot create another item while one is unfrozen
+- Must "end turn" to freeze current item before creating next one
+
+### Human Item Creation Flow
+
+1. **Create item** (Period or Event):
+   - Uses UI to create item
    - Fills metadata (name, tone, description, location in timeline)
-   - Writes expanded description in item conversation
-   - Clicks "End Turn" when done → metadata freezes
+   - Item is now **unfrozen** - metadata editable
+   - **New item creation UI is locked** - can't create another until turn ends
 
-2. **AI creates items when prompted**:
-   - Human asks AI to create an item in meta conversation
-   - AI uses CREATE command in meta chat
-   - System creates item with metadata from command
-   - Expanded description becomes first message in item conversation
-   - Metadata immediately frozen (AI doesn't have "editing phase")
+2. **Work on item**:
+   - Edit metadata as needed
+   - Write expanded description in item conversation
+   - Discuss with AI in item conversation
+   - Switch to other conversations if desired (they remain frozen)
 
-3. **Conversation**:
-   - Human can prompt AI anytime for discussion
-   - Human can ask AI questions in meta or item conversations
-   - Fully conversational - no turn enforcement
+3. **End turn** (two ways):
+   - **Explicit**: Click "End Turn" button → metadata freezes, can create next item
+   - **Implicit**: Prompt AI to create next item → current item freezes, AI creates theirs
 
-4. **Phase transition**:
-   - Human decides when initial setup is complete
-   - Clicks "Finish Initial Round" → phase becomes 'playing'
+### AI Item Creation (When Prompted)
+
+1. Human prompts AI in meta: "Create the next period"
+2. **Implicit end turn**: If human has unfrozen item, it freezes now
+3. AI uses CREATE command in meta conversation
+4. System creates item with metadata from command
+5. Expanded description becomes first message in item conversation
+6. **Metadata immediately frozen** (AI doesn't get editing phase)
+7. Human can now create their next item
+
+### Conversations During Editing
+
+While human has unfrozen item:
+- ✅ Can view/chat in ANY conversation (meta or item conversations)
+- ✅ Can discuss unfrozen item with AI
+- ✅ Can ask AI questions about other items
+- ❌ Cannot edit metadata of other (frozen) items
+- ❌ Cannot create new items (UI locked)
+
+### Phase Transition
+
+Human decides when initial setup is complete:
+- Clicks "Finish Initial Round" button
+- If item is unfrozen, it freezes now
+- Phase becomes 'playing'
 
 ## Playing Phase (v1)
 **Continue building the history collaboratively.**
 
-1. **Same as Initial Round** - human-driven, conversational
+1. **Same mechanics as Initial Round**:
+   - Human creates items (unfrozen)
+   - Works on them, then ends turn (explicit or implicit)
+   - Prompts AI to create items when desired
+   - One-unfrozen-item rule still applies
+
 2. Human and AI create additional periods, events, scenes
-3. All items frozen on creation
-4. Human prompts AI whenever they want its input
-5. Game continues until human decides it's complete
+3. Game continues until human decides it's complete
 
 ## v2 Features (Future)
 - **Automatic turn management**: System tracks whose turn it is

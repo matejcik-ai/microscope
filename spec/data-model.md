@@ -35,6 +35,7 @@ type Game = {
   // Game state
   phase: 'setup' | 'initial_round' | 'playing';
   currentTurn: PlayerRef; // whose turn it is (v2 feature - v1 is human-driven)
+  currentEditingItem: string | null; // itemId of unfrozen item (v1: enforces one-unfrozen-item rule)
 
   // Game timeline
   periods: Period[];
