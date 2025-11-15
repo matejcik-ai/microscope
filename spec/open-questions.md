@@ -4,15 +4,7 @@
 
 Questions still needing Product Owner input:
 
-1. **Undo/redo functionality**: Should there be undo/redo during editable phase?
-
-2. **Conversation switching**: When creating an item, should UI auto-switch to that item's conversation, or stay in meta?
-
-6. **System message format**: What's the exact format and styling for system messages in meta chat?
-
-7. **Error recovery**: If API call fails mid-turn, should we retry, or require manual retry?
-
-8. **localStorage quotas**: What happens when localStorage is full? Warn user? Block new games?
+1. **System message format**: What's the exact format and styling for system messages in meta chat?
 
 ## Resolved
 
@@ -38,3 +30,30 @@ Questions still needing Product Owner input:
 
 **Q: Timeline insertion logic**: When AI says "after Period X", how to handle if multiple valid positions exist?
 **A**: No ambiguity exists. Positioning is type-scoped - items are positioned relative to items of the same type only. Periods positioned relative to Periods, Events relative to Events (within parent Period), Scenes relative to Scenes (within parent Event). `AFTER X` means immediately after X in the same-type list. Cross-type positioning (e.g., "Event X AFTER Period Y") is invalid and triggers parse error. See `spec/ai-commands.md` Positioning Rules section.
+
+**Date: 2025-11-15 - API Error Recovery**
+
+**Q: Error recovery**: If API call fails mid-turn, should we retry, or require manual retry?
+**A**: Human message already added to history. Show error message with "retry" button that functions same as "restart from here" menu option - deletes failed AI response attempt and regenerates from prior context.
+
+**Date: 2025-11-15 - Undo/Redo**
+
+**Q: Undo/redo functionality**: Should there be undo/redo during editable phase?
+**A**: Not for v1. Nice-to-have for v2.
+
+**Date: 2025-11-15 - localStorage Quotas**
+
+**Q: localStorage quotas**: What happens when localStorage is full?
+**A**: Not handling for v1. v2 will migrate to indexedDB for more storage.
+
+**Date: 2025-11-15 - Conversation Switching on Item Creation**
+
+**Q: Conversation switching**: When creating an item, should UI auto-switch to that item's conversation, or stay in meta?
+**A**: When AI creates item via command:
+1. New item created with metadata from command
+2. Extended description becomes first message in item conversation
+3. AI's original response is REMOVED from meta conversation (doesn't go into meta history)
+4. Instead, meta gets system message: "Event created: Name" (clickable link to item)
+5. System message's "show raw" shows the unparsed AI response
+6. Auto-switch to item conversation if animation works cleanly, otherwise v1 shows link for human to click
+See `spec/conversations.md` for complete flow specification.
