@@ -366,6 +366,14 @@ export function useGameState(initialGameId?: string) {
     setGameState((prev) => {
       if (!prev) return prev;
 
+      // SPEC REQUIREMENT: "Metadata is editable until 'end turn' - then frozen"
+      // Reject updates to frozen items
+      const period = prev.periods.find(p => p.id === id);
+      if (period?.frozen) {
+        console.warn('Cannot update frozen period:', id);
+        return prev;
+      }
+
       return {
         ...prev,
         periods: prev.periods.map(period =>
@@ -378,6 +386,14 @@ export function useGameState(initialGameId?: string) {
   const updateEvent = useCallback((id: string, updates: Partial<Event>) => {
     setGameState((prev) => {
       if (!prev) return prev;
+
+      // SPEC REQUIREMENT: "Metadata is editable until 'end turn' - then frozen"
+      // Reject updates to frozen items
+      const event = prev.events.find(e => e.id === id);
+      if (event?.frozen) {
+        console.warn('Cannot update frozen event:', id);
+        return prev;
+      }
 
       return {
         ...prev,
@@ -392,6 +408,14 @@ export function useGameState(initialGameId?: string) {
     setGameState((prev) => {
       if (!prev) return prev;
 
+      // SPEC REQUIREMENT: "Metadata is editable until 'end turn' - then frozen"
+      // Reject updates to frozen items
+      const scene = prev.scenes.find(s => s.id === id);
+      if (scene?.frozen) {
+        console.warn('Cannot update frozen scene:', id);
+        return prev;
+      }
+
       return {
         ...prev,
         scenes: prev.scenes.map(scene =>
@@ -405,19 +429,27 @@ export function useGameState(initialGameId?: string) {
     setGameState((prev) => {
       if (!prev) return prev;
 
-      // Convert to PaletteItem objects, preserving existing IDs if items haven't changed
-      const newPalette = paletteItems.map(item => {
+      // Convert to PaletteItem objects, preserving existing IDs and creators
+      const newPalette = paletteItems.map((item, index) => {
         // Try to find existing item with same text and type
         const existing = prev.setup.palette.find(p => p.text === item.text && p.type === item.type);
         if (existing) {
-          return existing; // Keep the existing item with its ID
+          return existing; // Keep the existing item with its ID and creator
         }
-        // Create new item
+
+        // If not exact match, try to preserve creator from same position and type
+        // This handles case where AI created an item and human edits the text
+        const sameTypeItems = prev.setup.palette.filter(p => p.type === item.type);
+        const sameTypeNewItems = paletteItems.filter(i => i.type === item.type);
+        const positionInType = sameTypeNewItems.indexOf(item);
+        const creatorToPreserve = sameTypeItems[positionInType]?.createdBy;
+
+        // Create new item, preserving creator if possible
         return {
           id: crypto.randomUUID(),
           text: item.text,
           type: item.type,
-          createdBy: { playerId: 'human' }, // Assume human created via editor
+          createdBy: creatorToPreserve || { playerId: 'human' }, // Preserve creator or default to human
         };
       });
 
@@ -472,29 +504,16 @@ export function useGameState(initialGameId?: string) {
       const period = prev.periods.find(p => p.id === id);
       if (!period) return prev;
 
-      // Remove period and its conversation
-      const { [period.conversationId]: _, ...remainingConversations } = prev.conversations;
-
-      // Remove all events in this period and their conversations
+      // SPEC REQUIREMENT: "Every conversation is permanent - never delete or truncate conversation history"
+      // DO NOT delete conversations even when items are removed
       const eventsToRemove = prev.events.filter(e => e.periodId === id);
-      const eventConvIds = eventsToRemove.map(e => e.conversationId);
-      const filteredConversations = Object.fromEntries(
-        Object.entries(remainingConversations).filter(([k]) => !eventConvIds.includes(k))
-      );
-
-      // Remove all scenes in those events and their conversations
-      const scenesToRemove = prev.scenes.filter(s => eventsToRemove.some(e => e.id === s.eventId));
-      const sceneConvIds = scenesToRemove.map(s => s.conversationId);
-      const finalConversations = Object.fromEntries(
-        Object.entries(filteredConversations).filter(([k]) => !sceneConvIds.includes(k))
-      );
 
       return {
         ...prev,
         periods: prev.periods.filter(p => p.id !== id),
         events: prev.events.filter(e => e.periodId !== id),
         scenes: prev.scenes.filter(s => !eventsToRemove.some(e => e.id === s.eventId)),
-        conversations: finalConversations,
+        // Keep all conversations intact per spec
         currentSelection: prev.currentSelection?.id === id ? undefined : prev.currentSelection,
       };
     });
@@ -507,21 +526,14 @@ export function useGameState(initialGameId?: string) {
       const event = prev.events.find(e => e.id === id);
       if (!event) return prev;
 
-      // Remove event and its conversation
-      const { [event.conversationId]: _, ...remainingConversations } = prev.conversations;
-
-      // Remove all scenes in this event and their conversations
-      const scenesToRemove = prev.scenes.filter(s => s.eventId === id);
-      const sceneConvIds = scenesToRemove.map(s => s.conversationId);
-      const finalConversations = Object.fromEntries(
-        Object.entries(remainingConversations).filter(([k]) => !sceneConvIds.includes(k))
-      );
+      // SPEC REQUIREMENT: "Every conversation is permanent - never delete or truncate conversation history"
+      // DO NOT delete conversations even when items are removed
 
       return {
         ...prev,
         events: prev.events.filter(e => e.id !== id),
         scenes: prev.scenes.filter(s => s.eventId !== id),
-        conversations: finalConversations,
+        // Keep all conversations intact per spec
         currentSelection: prev.currentSelection?.id === id ? undefined : prev.currentSelection,
       };
     });
@@ -534,13 +546,13 @@ export function useGameState(initialGameId?: string) {
       const scene = prev.scenes.find(s => s.id === id);
       if (!scene) return prev;
 
-      // Remove scene and its conversation
-      const { [scene.conversationId]: _, ...remainingConversations } = prev.conversations;
+      // SPEC REQUIREMENT: "Every conversation is permanent - never delete or truncate conversation history"
+      // DO NOT delete conversations even when items are removed
 
       return {
         ...prev,
         scenes: prev.scenes.filter(s => s.id !== id),
-        conversations: remainingConversations,
+        // Keep all conversations intact per spec
         currentSelection: prev.currentSelection?.id === id ? undefined : prev.currentSelection,
       };
     });

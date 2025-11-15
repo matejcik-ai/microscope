@@ -122,6 +122,21 @@ function parseSingleCommand(commandLine: string): ParsedCommand {
     };
   }
 
+  // Parse create period command without placement (adds at end)
+  // Format: create period: Title (light|dark) | Description
+  const periodNoPlacementMatch = commandLine.match(/^create period:\s*(.+?)\s*\((light|dark)\)\s*\|\s*(.+)$/i);
+  if (periodNoPlacementMatch) {
+    return {
+      type: 'create-period',
+      data: {
+        title: periodNoPlacementMatch[1].trim(),
+        tone: periodNoPlacementMatch[2].toLowerCase() as 'light' | 'dark',
+        placement: undefined, // Will be handled by adding at the end
+        description: periodNoPlacementMatch[3].trim(),
+      },
+    };
+  }
+
   // Parse create start bookend command
   const startBookendMatch = commandLine.match(/^create start bookend:\s*(.+?)\s*\((light|dark)\)\s*\|\s*(.+)$/i);
   if (startBookendMatch) {
@@ -148,8 +163,9 @@ function parseSingleCommand(commandLine: string): ParsedCommand {
     };
   }
 
-  // Parse create event command
-  const eventMatch = commandLine.match(/^create event:\s*(.+?)\s*\((light|dark)\)\s*in\s+(.+)$/i);
+  // Parse create event command with description
+  // Format: create event: Title (light|dark) in PeriodTitle | Description
+  const eventMatch = commandLine.match(/^create event:\s*(.+?)\s*\((light|dark)\)\s*in\s+(.+?)\s*\|\s*(.+)$/i);
   if (eventMatch) {
     return {
       type: 'create-event',
@@ -157,6 +173,21 @@ function parseSingleCommand(commandLine: string): ParsedCommand {
         title: eventMatch[1].trim(),
         tone: eventMatch[2].toLowerCase() as 'light' | 'dark',
         periodTitle: eventMatch[3].trim(),
+        description: eventMatch[4].trim(),
+      },
+    };
+  }
+
+  // Parse create event command without description (backward compatibility)
+  const eventMatchNoDesc = commandLine.match(/^create event:\s*(.+?)\s*\((light|dark)\)\s*in\s+(.+)$/i);
+  if (eventMatchNoDesc) {
+    return {
+      type: 'create-event',
+      data: {
+        title: eventMatchNoDesc[1].trim(),
+        tone: eventMatchNoDesc[2].toLowerCase() as 'light' | 'dark',
+        periodTitle: eventMatchNoDesc[3].trim(),
+        description: '',
       },
     };
   }
