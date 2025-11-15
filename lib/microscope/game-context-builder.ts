@@ -249,6 +249,43 @@ function formatEvent(event: Event, gameState: GameState): string {
     lines.push('');
   }
 
+  // Include all scenes in this event
+  const scenes = gameState.scenes
+    .filter(s => s.eventId === event.id)
+    .sort((a, b) => a.order - b.order);
+
+  if (scenes.length > 0) {
+    lines.push('##### Scenes in this Event:');
+    scenes.forEach(scene => {
+      lines.push(formatScene(scene, gameState));
+    });
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format a scene with its full conversation history
+ */
+function formatScene(scene: any, gameState: GameState): string {
+  const lines: string[] = [];
+
+  lines.push(`###### SCENE: ${scene.question}`);
+  if (scene.answer) {
+    lines.push(`Answer: ${scene.answer}`);
+  }
+  lines.push('');
+
+  // Include scene's conversation
+  const conversation = gameState.conversations[scene.conversationId];
+  if (conversation && conversation.messages.length > 0) {
+    lines.push('###### Scene Discussion:');
+    conversation.messages.forEach(msg => {
+      lines.push(formatMessage(msg));
+    });
+    lines.push('');
+  }
+
   return lines.join('\n');
 }
 

@@ -173,7 +173,7 @@ export default function GamePage() {
       }
 
       case 'create-event': {
-        const { title, tone, periodTitle } = command.data;
+        const { title, tone, periodTitle, description } = command.data;
         const period = findPeriodByTitle(periodTitle);
 
         if (!period) {
@@ -186,8 +186,8 @@ export default function GamePage() {
           return;
         }
 
-        // Create the event (AI created)
-        const eventId = addEvent(period.id, title, '', tone, 'ai-1');
+        // Create the event (AI created) with description from command
+        const eventId = addEvent(period.id, title, description || '', tone, 'ai-1');
 
         if (!eventId) {
           console.error('Failed to create event:', title);
@@ -481,9 +481,9 @@ export default function GamePage() {
       // SUCCESS: Update pending message to non-pending
       updateMessage(conversationId, pendingMessageId, { pending: false });
 
-      // Always add the full AI response to meta chat (with raw content for "show unprocessed")
-      const metaConversationId = gameState.metaConversationId;
-      addMessage(metaConversationId, {
+      // Add the AI response to the CURRENT conversation (not always meta)
+      // This allows AI to participate in item conversations per spec
+      addMessage(conversationId, {
         role: 'assistant',
         playerId: 'ai-1',
         playerName: 'AI Player',
