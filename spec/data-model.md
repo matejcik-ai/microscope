@@ -34,8 +34,8 @@ type Game = {
 
   // Game state
   phase: 'setup' | 'initial_round' | 'playing';
-  currentTurn: PlayerRef; // whose turn it is (v2 feature - v1 is human-driven)
   currentEditingItem: string | null; // itemId of unfrozen item (v1: enforces one-unfrozen-item rule)
+  // Note: v2 will add `currentTurn: PlayerRef` for automatic turn management
 
   // Game timeline
   periods: Period[];
@@ -53,6 +53,8 @@ type PaletteItem = {
   text: string;
   type: 'yes' | 'no'; // "yes and..." or "no and..."
   createdBy: PlayerRef;
+  // Note: Palette items are NEVER frozen - human can edit/delete at any time
+  // AI can create palette items via CREATE PALETTE command during setup phase only
 }
 
 type Period = {

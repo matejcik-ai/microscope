@@ -1,45 +1,98 @@
 # Claude API Integration & Caching
 
-## Context Structure (Every API Call)
+## Request Structure (Every API Call)
+
+See `spec/underspecified/system-prompts.md` for detailed architecture.
 
 ```javascript
-const messages = [
-  {
-    role: "user",
-    content: [
-      {
-        type: "text",
-        text: buildCachedGameContext(game), // ALL previous content
-        cache_control: { type: "ephemeral" }
-      }
-    ]
-  },
-  ...currentConversationLast10Turns.map(msg => ({
-    role: msg.role,
-    content: msg.content
-    // NO cache_control on recent messages
-  }))
-];
+const apiRequest = {
+  model: "claude-3-5-sonnet-20241022",
+  max_tokens: 4096,
+  system: [
+    {
+      type: "text",
+      text: getSystemPromptForConversationType(conversationType), // base instructions
+      cache_control: { type: "ephemeral" }
+    },
+    {
+      type: "text",
+      text: getPersonaPrompt(aiPlayer.personaId), // persona-specific
+      cache_control: { type: "ephemeral" }
+    }
+  ],
+  messages: [
+    {
+      role: "user",
+      content: [
+        {
+          type: "text",
+          text: buildGameContext(game), // high concept, palette, timeline
+          cache_control: { type: "ephemeral" }
+        }
+      ]
+    },
+    {
+      role: "user", // or system for item metadata
+      content: [
+        {
+          type: "text",
+          text: buildCurrentItemMetadata(item), // for item conversations only
+          cache_control: { type: "ephemeral" }
+        }
+      ]
+    },
+    {
+      role: "user",
+      content: [
+        {
+          type: "text",
+          text: buildConversationHistory(conversationId), // full history
+          cache_control: { type: "ephemeral" }
+        }
+      ]
+    },
+    // New human message (not cached)
+    {
+      role: "user",
+      content: newHumanMessage
+    }
+  ]
+};
 ```
 
-## buildCachedGameContext()
+## buildGameContext()
 
-Returns a single string containing:
+Returns formatted string containing:
 
-1. **System prompt** for current context (meta or specific item)
-2. **High concept**
-3. **Complete palette**
-4. **All periods** (in timeline order):
-   - Metadata
-   - Full conversation history from item conversation
-5. **All events** (in timeline order):
-   - Metadata
-   - Full conversation history from item conversation
-6. **Meta conversation history** (except last 10 turns)
+1. **High concept**
+2. **Complete palette** (yes/no items)
+3. **Current phase**
+4. **Full timeline** (all periods, events, scenes in chronological order with metadata)
+
+**Note**: This does NOT include conversation histories - those are built separately.
+
+## buildCurrentItemMetadata()
+
+For item conversations only. Returns formatted string:
+
+```
+CURRENT ITEM:
+Type: Period
+Name: The Golden Age
+Tone: light
+Created by: AI Player
+Status: Editable
+```
+
+## buildConversationHistory()
+
+Returns the full conversation history for the specified conversation (meta or specific item).
+
+Includes all messages from conversation start to present, formatted chronologically.
 
 **Size**: This will grow large. That's fine - prompt caching makes repeated tokens cheap.
 
-**Update frequency**: Regenerate on every API call, cache control on the concatenated text.
+**Update frequency**: Regenerate on every API call with cache control.
 
 ## API Call Sites
 
@@ -55,9 +108,8 @@ Returns a single string containing:
 
 ## System Prompts
 
-**UNDERSPECIFIED**: Exact system prompt content for:
-- Meta conversation context
-- Per-item conversation context
-- AI persona integration
-
-See `spec/underspecified/system-prompts.md` for details.
+See `spec/underspecified/system-prompts.md` for complete specifications including:
+- Base system prompt templates for each conversation type
+- Persona prompt library (v1: single "generic RPG player" persona)
+- Game context formatting
+- Cache structure and breakpoint strategy

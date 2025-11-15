@@ -30,12 +30,13 @@ A React SPA for playing Microscope RPG with AI co-players. Fully local (v1), loc
 - One-unfrozen-item rule (focused editing)
 - Full prompt caching
 - Multi-game support
+- Dictated scenes (question + answer specified at creation)
 
 ### v2 (Future)
 - Multiple AI players with persona picker
 - Automatic round-robin turn management
 - Focus mechanic
-- Detailed scenes with roleplay
+- Roleplayed scenes (question specified first, answer emerges through play)
 - Proactive AI (takes turns automatically)
 - Potentially multi-player with backend
 
@@ -50,6 +51,6 @@ When implementing, **refuse to**:
 4. Allow multiple unfrozen items simultaneously
 5. Skip caching on game context
 6. Merge conversations or lose per-item isolation
-7. Add features not in v1 scope (multiple AI players, automatic turns, focus mechanic, scenes with roleplay)
+7. Add features not in v1 scope (multiple AI players, automatic turns, focus mechanic, roleplayed scenes)
 8. Store API key per-game or per-player (it's global only)
 9. Allow gameplay without API key set
