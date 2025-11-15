@@ -79,7 +79,7 @@ const DEFAULT_PERSONA: PersonaDefinition = {
 };
 ```
 
-**Note**: The collaborative storyteller guidance ("You create engaging periods, events, and scenes...") is part of the **base system prompt** for all conversation types, not persona-specific. See `spec/underspecified/system-prompts.md` for details.
+**Note**: The collaborative storyteller guidance ("You create engaging periods, events, and scenes...") is part of the **base system prompt** for all conversation types, not persona-specific. See `spec/system-prompts.md` for details.
 
 **Game creation flow**:
 1. Human creates new game
