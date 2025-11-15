@@ -39,6 +39,12 @@ function createEmptyGameState(gameId: string, gameName: string = 'New Game'): Ga
         name: 'You',
         type: 'human',
       },
+      {
+        id: 'ai-1',
+        name: 'AI Player',
+        type: 'ai',
+        personaPrompt: '', // v1: generic persona with no additional prompt
+      },
     ],
     metaConversationId,
   };
@@ -274,6 +280,48 @@ export function useGameState(initialGameId?: string) {
     return createdId;
   }, []);
 
+  const addScene = useCallback((
+    eventId: string,
+    question: string,
+    answer: string,
+    tone: 'light' | 'dark',
+    createdByPlayerId: string = 'human'
+  ): string | null => {
+    let createdId: string | null = null;
+    setGameState((prev) => {
+      if (!prev) return prev;
+
+      const conversationId = crypto.randomUUID();
+      const sceneId = crypto.randomUUID();
+      createdId = sceneId;
+
+      const scene = {
+        id: sceneId,
+        eventId,
+        question,
+        answer,
+        tone,
+        conversationId,
+        order: prev.scenes.filter(s => s.eventId === eventId).length,
+        frozen: false, // New scenes start unfrozen
+        createdBy: { playerId: createdByPlayerId },
+      };
+
+      return {
+        ...prev,
+        scenes: [...prev.scenes, scene],
+        conversations: {
+          ...prev.conversations,
+          [conversationId]: {
+            id: conversationId,
+            messages: [],
+          },
+        },
+      };
+    });
+    return createdId;
+  }, []);
+
   const addMessage = useCallback((conversationId: string, message: Omit<Message, 'id' | 'timestamp'>) => {
     setGameState((prev) => {
       if (!prev) return prev;
@@ -421,6 +469,19 @@ export function useGameState(initialGameId?: string) {
         scenes: prev.scenes.map(scene =>
           scene.id === id ? { ...scene, ...updates } : scene
         ),
+      };
+    });
+  }, []);
+
+  const updateBigPicture = useCallback((bigPicture: string) => {
+    setGameState((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        setup: {
+          ...prev.setup,
+          bigPicture,
+        },
       };
     });
   }, []);
@@ -730,6 +791,7 @@ export function useGameState(initialGameId?: string) {
     findPeriodByTitle,
     findEventByTitle,
     addEvent,
+    addScene,
     addMessage,
     addMessageWithId,
     updateMessage,
@@ -737,6 +799,7 @@ export function useGameState(initialGameId?: string) {
     updatePeriod,
     updateEvent,
     updateScene,
+    updateBigPicture,
     updatePalette,
     setSelection,
     getSelectedConversation,

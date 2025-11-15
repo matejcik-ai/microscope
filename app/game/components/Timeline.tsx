@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { GameState, Period, Event } from '@/lib/microscope/types';
 
 interface TimelineProps {
@@ -8,9 +9,12 @@ interface TimelineProps {
   selectedId?: string;
   selectedType?: string;
   onEditPalette?: () => void;
+  onUpdateBigPicture?: (bigPicture: string) => void;
 }
 
-export default function Timeline({ gameState, onSelect, selectedId, selectedType, onEditPalette }: TimelineProps) {
+export default function Timeline({ gameState, onSelect, selectedId, selectedType, onEditPalette, onUpdateBigPicture }: TimelineProps) {
+  const [isEditingBigPicture, setIsEditingBigPicture] = useState(false);
+  const [bigPictureValue, setBigPictureValue] = useState('');
   const getEventsForPeriod = (periodId: string): Event[] => {
     return gameState.events
       .filter(e => e.periodId === periodId)
@@ -48,6 +52,105 @@ export default function Timeline({ gameState, onSelect, selectedId, selectedType
         <div style={{ fontSize: '0.875rem', color: '#666', marginTop: '0.25rem' }}>
           Big Picture, Palette, Bookends
         </div>
+      </div>
+
+      {/* Big Picture Display - Always Visible */}
+      <div style={{
+        marginTop: '1rem',
+        marginBottom: '1rem',
+        padding: '0.75rem',
+        background: '#fafafa',
+        borderRadius: '4px',
+        border: '1px solid #e0e0e0',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <h3 style={{ fontSize: '0.875rem', fontWeight: '600', margin: 0 }}>
+            Big Picture
+          </h3>
+          {onUpdateBigPicture && !isEditingBigPicture && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsEditingBigPicture(true);
+                setBigPictureValue(gameState.setup.bigPicture || '');
+              }}
+              style={{
+                padding: '0.25rem 0.5rem',
+                background: '#1976d2',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+              }}
+            >
+              Edit
+            </button>
+          )}
+        </div>
+
+        {isEditingBigPicture ? (
+          <div>
+            <textarea
+              value={bigPictureValue}
+              onChange={(e) => setBigPictureValue(e.target.value)}
+              placeholder="Enter the high concept of your history..."
+              style={{
+                width: '100%',
+                minHeight: '80px',
+                padding: '0.5rem',
+                fontSize: '0.75rem',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                resize: 'vertical',
+                fontFamily: 'inherit',
+              }}
+            />
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <button
+                onClick={() => {
+                  onUpdateBigPicture?.(bigPictureValue);
+                  setIsEditingBigPicture(false);
+                }}
+                style={{
+                  padding: '0.25rem 0.75rem',
+                  background: '#4caf50',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                }}
+              >
+                Save
+              </button>
+              <button
+                onClick={() => {
+                  setIsEditingBigPicture(false);
+                  setBigPictureValue(gameState.setup.bigPicture || '');
+                }}
+                style={{
+                  padding: '0.25rem 0.75rem',
+                  background: '#999',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ fontSize: '0.75rem', color: gameState.setup.bigPicture ? '#333' : '#999', fontStyle: gameState.setup.bigPicture ? 'normal' : 'italic' }}>
+            {gameState.setup.bigPicture || 'Not set yet'}
+          </div>
+        )}
       </div>
 
       {/* Palette Display - Always Visible */}
