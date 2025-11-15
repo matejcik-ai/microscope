@@ -1,20 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import type { PaletteItem } from '@/lib/microscope/types';
 
 interface PaletteEditorProps {
-  yesItems: string[];
-  noItems: string[];
-  onSave: (yesItems: string[], noItems: string[]) => void;
+  palette: PaletteItem[];
+  onSave: (items: Array<{ text: string; type: 'yes' | 'no' }>) => void;
   onClose: () => void;
 }
 
 export default function PaletteEditor({
-  yesItems,
-  noItems,
+  palette,
   onSave,
   onClose,
 }: PaletteEditorProps) {
+  const yesItems = palette.filter(p => p.type === 'yes').map(p => p.text);
+  const noItems = palette.filter(p => p.type === 'no').map(p => p.text);
+
   const [yesText, setYesText] = useState(yesItems.join('\n'));
   const [noText, setNoText] = useState(noItems.join('\n'));
 
@@ -29,7 +31,13 @@ export default function PaletteEditor({
       .map(line => line.trim())
       .filter(line => line.length > 0);
 
-    onSave(newYesItems, newNoItems);
+    // Convert to palette item format
+    const paletteItems = [
+      ...newYesItems.map(text => ({ text, type: 'yes' as const })),
+      ...newNoItems.map(text => ({ text, type: 'no' as const })),
+    ];
+
+    onSave(paletteItems);
     onClose();
   };
 

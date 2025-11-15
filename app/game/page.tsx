@@ -37,6 +37,9 @@ export default function GamePage() {
     deleteScene,
     switchGame,
     createNewGame,
+    startGame,
+    endTurn,
+    freezeItem,
   } = useGameState();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -75,8 +78,8 @@ export default function GamePage() {
       case 'create-period': {
         const { title, tone, description, placement } = command.data;
 
-        // Create the period with optional placement
-        const periodId = addPeriod(title, description, tone, false, placement);
+        // Create the period with optional placement (AI created)
+        const periodId = addPeriod(title, description, tone, false, placement, 'ai-1');
 
         if (!periodId) {
           console.error('Failed to create period:', title);
@@ -139,8 +142,8 @@ export default function GamePage() {
           break;
         }
 
-        // Create new bookend
-        const periodId = addPeriod(title, description, tone, true);
+        // Create new bookend (AI created)
+        const periodId = addPeriod(title, description, tone, true, undefined, 'ai-1');
 
         if (!periodId) {
           console.error('Failed to create bookend:', title);
@@ -183,8 +186,8 @@ export default function GamePage() {
           return;
         }
 
-        // Create the event
-        const eventId = addEvent(period.id, title, '', tone);
+        // Create the event (AI created)
+        const eventId = addEvent(period.id, title, '', tone, 'ai-1');
 
         if (!eventId) {
           console.error('Failed to create event:', title);
@@ -225,7 +228,7 @@ export default function GamePage() {
 
       case 'add-palette': {
         const { category, item } = command.data;
-        addPaletteItem(category, item);
+        addPaletteItem(category, item, 'ai-1'); // AI created
 
         // Add confirmation to current conversation
         addMessage(currentConversationId, {
@@ -456,32 +459,13 @@ export default function GamePage() {
     if (!conversation) return;
 
     try {
-      // Build messages for API (exclude pending flag)
-      const messages = conversation.messages
-        .filter(m => !m.pending) // Don't send pending messages
-        .map(m => ({
-          role: m.role,
-          content: m.content,
-        }));
-
-      // Add the new user message to the context for API call
-      messages.push({ role: 'user', content });
-
-      // Build game context
-      const gameContext = {
-        bigPicture: gameState.setup.bigPicture,
-        bookends: gameState.setup.bookends,
-        palette: gameState.setup.palette,
-        currentContext: getCurrentContext(),
-      };
-
+      // New API structure per spec: pass full gameState and currentConversationId
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages,
-          gameState, // Full game state for prompt caching
-          gameContext,
+          gameState, // Full game state for context building
+          currentConversationId: conversationId,
           apiSettings: apiSettings,
         }),
       });
@@ -497,13 +481,14 @@ export default function GamePage() {
       // SUCCESS: Update pending message to non-pending
       updateMessage(conversationId, pendingMessageId, { pending: false });
 
-      // Always add the full AI response to meta chat for debugging
+      // Always add the full AI response to meta chat (with raw content for "show unprocessed")
       const metaConversationId = gameState.metaConversationId;
       addMessage(metaConversationId, {
         role: 'assistant',
         playerId: 'ai-1',
         playerName: 'AI Player',
         content: data.response,
+        rawContent: data.response, // Store raw output for "show unprocessed"
       });
 
       // Process AI response using the EXACT same code path as reparse
@@ -719,29 +704,13 @@ export default function GamePage() {
     setIsLoading(true);
 
     try {
-      // Build messages for API
-      const messages = conversation.messages
-        .slice(0, deleteFromIndex)
-        .map(m => ({
-          role: m.role,
-          content: m.content,
-        }));
-
-      // Build game context
-      const gameContext = {
-        bigPicture: gameState.setup.bigPicture,
-        bookends: gameState.setup.bookends,
-        palette: gameState.setup.palette,
-        currentContext: getCurrentContext(),
-      };
-
+      // New API structure per spec: pass full gameState and currentConversationId
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages,
           gameState,
-          gameContext,
+          currentConversationId: conversationId,
           apiSettings: apiSettings,
         }),
       });
@@ -798,13 +767,83 @@ export default function GamePage() {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '0.5rem',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>
             Microscope RPG
           </h1>
+
+          {/* Phase indicator */}
+          <div style={{
+            padding: '0.25rem 0.75rem',
+            background: 'rgba(255,255,255,0.2)',
+            borderRadius: '12px',
+            fontSize: '0.75rem',
+            fontWeight: '600',
+            textTransform: 'uppercase',
+          }}>
+            {gameState.phase === 'setup' ? '📋 Setup' :
+             gameState.phase === 'initial_round' ? '🎯 Initial Round' :
+             '🎮 Playing'}
+          </div>
+
+          {/* Turn indicator */}
+          {gameState.currentTurn && (
+            <div style={{
+              padding: '0.25rem 0.75rem',
+              background: 'rgba(255,255,255,0.3)',
+              borderRadius: '12px',
+              fontSize: '0.75rem',
+              fontWeight: '600',
+            }}>
+              {(() => {
+                const currentPlayer = gameState.players.find(p => p.id === gameState.currentTurn?.playerId);
+                return `Turn: ${currentPlayer?.name || 'Unknown'}`;
+              })()}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {/* Start Game button (only in setup phase) */}
+          {gameState.phase === 'setup' && gameState.setup.bigPicture && gameState.setup.bookends.start && gameState.setup.bookends.end && (
+            <button
+              onClick={startGame}
+              style={{
+                padding: '0.5rem 1rem',
+                background: '#4caf50',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: '600',
+              }}
+              title="Start the game (freezes setup and begins initial round)"
+            >
+              ▶️ Start Game
+            </button>
+          )}
+
+          {/* End Turn button (only when it's human's turn and viewing an item) */}
+          {gameState.currentTurn && gameState.currentTurn.playerId === 'human' && gameState.currentSelection && gameState.currentSelection.type !== 'meta' && (
+            <button
+              onClick={endTurn}
+              style={{
+                padding: '0.5rem 1rem',
+                background: '#ff9800',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: '600',
+              }}
+              title="End your turn (freezes current item and advances to next player)"
+            >
+              ✓ End Turn
+            </button>
+          )}
+
           <button
             onClick={() => setShowGameSwitcher(true)}
             style={{
@@ -1129,10 +1168,9 @@ export default function GamePage() {
       {/* Palette Editor */}
       {showPaletteEditor && (
         <PaletteEditor
-          yesItems={gameState.setup.palette.yes}
-          noItems={gameState.setup.palette.no}
-          onSave={(yesItems, noItems) => {
-            updatePalette(yesItems, noItems);
+          palette={gameState.setup.palette}
+          onSave={(paletteItems) => {
+            updatePalette(paletteItems);
             setShowPaletteEditor(false);
           }}
           onClose={() => setShowPaletteEditor(false)}

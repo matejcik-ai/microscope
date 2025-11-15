@@ -4,6 +4,11 @@
 
 export type Tone = 'light' | 'dark';
 export type PlayerType = 'human' | 'ai';
+export type GamePhase = 'setup' | 'initial_round' | 'playing';
+
+export interface PlayerRef {
+  playerId: string;
+}
 
 export interface Message {
   id: string;
@@ -13,7 +18,9 @@ export interface Message {
   content: string;
   timestamp: number;
   pending?: boolean; // True while waiting for AI response
+  rawContent?: string; // Store raw AI output including commands (for "show unprocessed")
   metadata?: {
+    type?: 'item_created' | 'turn_ended' | 'phase_changed';
     linkTo?: {
       type: 'period' | 'event' | 'scene';
       id: string;
@@ -26,6 +33,13 @@ export interface Conversation {
   messages: Message[];
 }
 
+export interface PaletteItem {
+  id: string;
+  text: string;
+  type: 'yes' | 'no'; // "yes and..." or "no and..."
+  createdBy: PlayerRef;
+}
+
 export interface Period {
   id: string;
   title: string;
@@ -34,6 +48,8 @@ export interface Period {
   conversationId: string;
   order: number; // For display ordering
   isBookend?: boolean; // True for timeline start/end bookends
+  frozen: boolean; // Metadata editable until frozen
+  createdBy: PlayerRef;
 }
 
 export interface Event {
@@ -44,6 +60,8 @@ export interface Event {
   tone: Tone;
   conversationId: string;
   order: number;
+  frozen: boolean;
+  createdBy: PlayerRef;
 }
 
 export interface Scene {
@@ -53,25 +71,25 @@ export interface Scene {
   answer?: string;
   conversationId: string;
   order: number;
+  tone: 'light' | 'dark';
+  frozen: boolean;
+  createdBy: PlayerRef;
 }
 
 export interface Player {
   id: string;
   name: string;
   type: PlayerType;
-  personaId?: string; // For future AI personas
+  personaPrompt?: string; // System prompt defining their playstyle (for AI players)
 }
 
 export interface GameSetup {
   bigPicture: string;
   bookends: {
-    start: string;
-    end: string;
+    start?: string; // Period ID of start bookend
+    end?: string; // Period ID of end bookend
   };
-  palette: {
-    yes: string[]; // Things we want to see
-    no: string[]; // Things we don't want
-  };
+  palette: PaletteItem[];
 }
 
 export interface APISettings {
@@ -82,13 +100,27 @@ export interface APISettings {
 
 export interface GameState {
   id: string;
+  name: string; // User-provided game name
+  created: number; // timestamp
+
+  // Game phase tracking
+  phase: GamePhase;
+  currentTurn: PlayerRef | null; // whose turn it is (null during setup)
+
+  // Setup and timeline
   setup: GameSetup;
   periods: Period[];
   events: Event[];
   scenes: Scene[];
+
+  // Conversations
   conversations: Record<string, Conversation>;
-  players: Player[];
   metaConversationId: string; // For game setup, palette discussion
+
+  // Players
+  players: Player[];
+
+  // UI state
   currentSelection?: {
     type: 'meta' | 'period' | 'event' | 'scene';
     id: string;
