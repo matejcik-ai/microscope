@@ -1,102 +1,97 @@
-# Player Management (UNDERSPECIFIED)
+# Player Management (SPECIFIED)
 
-## Problem
+## Product Owner Decision - 2025-11-15
 
-Spec mentions AI players with personas but doesn't detail how they're created, edited, or managed.
+The following decisions have been made:
 
-## Missing Details
+## v1 Specification
 
-### Player Creation
+### AI Player Count
+- **v1: Exactly ONE AI player**
+- One human player + one AI player per game
+- Future versions will support multiple AI players with persona picker
 
-**During setup**:
-- How many AI players can be added?
-- Are they added during game setup, or pre-game?
-- Can players be added/removed mid-game?
+### Persona System
+**Personas are hard-coded by app provider (us)**:
+- Not user-created or user-editable
+- Referenced by short string ID (e.g., "optimist", "tragedian")
+- Part of game configuration at creation time
+- No persistence across games - just system prompt content
 
-**Human players**:
-- Is there always exactly one human player?
-- Or can multiple humans play together (v2)?
-- How is the human player represented in Player array?
-
-### AI Persona Definition
-
-**UI for persona creation**:
-- Text area for free-form prompt?
-- Template selection (e.g., "Aggressive", "Creative", "Logical")?
-- Structured form (playstyle traits, preferences)?
-
-**Persona prompt content**:
-- What guidance to give users?
-- Example personas provided?
-- Character limits?
-
-**Persona examples**:
-```
-"You play Microscope by focusing on tragedy and irony.
-You prefer dark-toned events and explore the consequences
-of hubris and failed ambitions."
+**Persona structure** (defined in code):
+```typescript
+type PersonaDefinition = {
+  id: string;              // e.g., "optimist"
+  name: string;            // e.g., "The Optimist"
+  description: string;     // Short description for UI
+  systemPrompt: string;    // Pre-prompt injected into AI calls
+}
 ```
 
-vs.
+**v1 has ONE persona** - we'll create one default persona
+**Future versions** will have persona library with picker UI
 
+### Turn Mechanics (v1)
+**Human-driven, not automated**:
+- No automatic turn-taking in v1
+- Human prompts AI whenever they want its input
+- Human is fully in control of conversation flow
+- AI responds when explicitly prompted by human
+- Future versions may add automatic turn management
+
+### Player Configuration
+**At game creation**:
+- Game config includes persona ID (hard-coded to default for v1)
+- Players locked at creation time
+- Cannot add/remove/change persona after game starts
+
+**No player editing UI needed in v1**:
+- Persona is selected implicitly (only one exists)
+- No player management UI required
+- Future versions will have persona picker
+
+### Player Data Model
+```typescript
+type Player = {
+  id: string;
+  name: string;              // Display name
+  type: 'human' | 'ai';
+  personaId?: string;        // References PersonaDefinition.id (AI only)
+}
+
+// In Game:
+type Game = {
+  // ...
+  players: Player[];  // Always [humanPlayer, aiPlayer] in v1
+  // ...
+}
 ```
-"You are optimistic and create hopeful moments even in
-dark periods. You focus on heroism and redemption."
+
+### Implementation for v1
+
+**Hard-coded persona** (example):
+```typescript
+const DEFAULT_PERSONA: PersonaDefinition = {
+  id: 'balanced',
+  name: 'Balanced Co-player',
+  description: 'A thoughtful collaborator who explores both light and dark moments',
+  systemPrompt: `You are playing Microscope RPG as a collaborative storyteller.
+You create engaging periods, events, and scenes that build on the shared history.
+You balance light and dark tones, and focus on making the timeline interesting
+and coherent. You ask clarifying questions when needed and respect the established
+facts of the game.`
+};
 ```
 
-### Player Editing
+**Game creation flow**:
+1. Human creates new game
+2. System automatically creates two players:
+   - Human player (type: 'human')
+   - AI player (type: 'ai', personaId: 'balanced')
+3. Players locked for duration of game
 
-**During setup phase**:
-- Can personas be edited?
-- Can player names be changed?
-- Can players be removed?
-
-**After game starts**:
-- Are players locked in?
-- Or can personas be tweaked between turns?
-
-### Turn Order
-
-**Initialization**:
-- Random order?
-- User-specified order?
-- Creation order?
-
-**Display**:
-- Show turn order in UI?
-- Highlight current player?
-- Show upcoming player?
-
-### Player Limits
-
-**Maximum players**:
-- Technical limit (performance)?
-- Practical limit (UX)?
-- Recommended number for v1?
-
-**Minimum players**:
-- Can game have 0 AI players (human solo)?
-- Must have at least 1 AI?
-
-## Questions to Resolve
-
-1. **Player setup timing**: When are AI players configured - before creating game, or during setup phase?
-
-2. **Persona complexity**: Should v1 support simple text prompts, or richer persona configuration?
-
-3. **Player identification**: How to visually distinguish players in UI (colors, avatars, icons)?
-
-4. **Human player config**: Does human player have a name/avatar, or just "You"?
-
-5. **Player persistence**: Are AI personas stored per-game, or can they be saved globally and reused?
-
-## Recommended Approach (To Be Confirmed)
-
-**Suggestion for v1**:
-- Configure players during game setup phase (before "Start Game")
-- Support 1 human + 1-3 AI players
-- Simple text area for persona prompts
-- Provide 2-3 example personas as templates
-- Random turn order on game start
-- Players locked in once game starts (no add/remove mid-game)
-- Show current turn player prominently in UI
+**AI prompting** (human-driven):
+- Human can message AI in meta conversation anytime
+- Human can message AI in any item conversation anytime
+- No turn enforcement - fully conversational
+- AI responds when prompted

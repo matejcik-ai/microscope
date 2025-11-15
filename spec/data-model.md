@@ -34,7 +34,7 @@ type Game = {
 
   // Game state
   phase: 'setup' | 'initial_round' | 'playing';
-  currentTurn: PlayerRef; // whose turn it is
+  currentTurn: PlayerRef; // whose turn it is (v2 feature - v1 is human-driven)
 
   // Game timeline
   periods: Period[];
@@ -44,7 +44,7 @@ type Game = {
   itemConversations: Map<itemId, Conversation>;
 
   // Players
-  players: Player[]; // mix of human and AI
+  players: Player[]; // v1: always 2 players (1 human, 1 AI); v2: 2-5 players
 }
 
 type PaletteItem = {
@@ -119,7 +119,15 @@ type Player = {
   type: 'human' | 'ai';
 
   // For AI players
-  personaPrompt?: string; // system prompt defining their playstyle
+  personaId?: string; // References hard-coded PersonaDefinition (v1: always 'balanced')
+}
+
+// Persona definitions (hard-coded in app, not in game data)
+type PersonaDefinition = {
+  id: string;           // e.g., 'balanced', 'optimist', 'tragedian'
+  name: string;         // Display name
+  description: string;  // Short description for UI
+  systemPrompt: string; // Pre-prompt for AI calls
 }
 
 type PlayerRef = {
