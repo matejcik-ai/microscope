@@ -4,9 +4,7 @@
 
 Questions still needing Product Owner input:
 
-1. **AI command parsing errors**: What happens if AI fails to parse a command - retry automatically or ask human?
-
-3. **Undo/redo functionality**: Should there be undo/redo during editable phase?
+1. **Undo/redo functionality**: Should there be undo/redo during editable phase?
 
 4. **Timeline insertion logic**: When AI says "after Period X", how to handle if multiple valid positions exist?
 
@@ -32,3 +30,8 @@ Questions still needing Product Owner input:
 
 **Q: Bookend periods in setup**: Should bookend periods have conversations in setup phase, or stay empty until game starts?
 **A**: Bookend periods work like any other period in terms of UI and data model - they DO have conversations. However, in typical play, these conversations are created empty (no initial message like items created via CREATE command). Human players CAN switch to bookend period conversations and discuss them, but the content is typically never created. The conversation exists but starts empty.
+
+**Date: 2025-11-15 - AI Command Parsing Errors**
+
+**Q: AI command parsing errors**: What happens if AI fails to parse a command - retry automatically or ask human?
+**A**: v1 emits error to chat stream, human decides recovery method. No automatic retries. Lenient parsing for minor variations, strict on structure. All-or-nothing for multi-command responses (palette, bookends). Message action menu provides: show unparsed output, reparse, restart from here. Everything goes in conversation history so AI sees its errors. See `spec/command-error-handling.md` for complete specification.

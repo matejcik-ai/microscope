@@ -4,20 +4,20 @@ This document summarizes the areas of the specification that need more detail be
 
 ## Critical (Blocks Core Features)
 
-### 1. AI Command Error Handling
-**File**: `spec/underspecified/command-error-handling.md`
+### 1. AI Command Error Handling - RESOLVED ✅
+**File**: `spec/command-error-handling.md`
 
 **Problem**: When AI fails to parse a command properly, the spec doesn't define what happens.
 
-**Decisions Needed**:
-- Should system retry automatically or ask human to intervene?
-- How many retries before giving up?
-- Does turn stay with current player or advance on error?
-- Can human manually create the item AI intended?
+**Resolution**:
+- Emit error to chat stream, human decides recovery method
+- No automatic retries in v1
+- Lenient parsing for minor variations, strict on structure
+- All-or-nothing for multi-command responses
+- Message action menu: show unparsed, reparse, restart from here
+- Everything goes in conversation history (AI sees its errors)
 
-**Impact**: Blocks implementation of command parser (Phase 1)
-
-**Recommendation**: Use graceful degradation - parse leniently, show error in meta chat, keep turn with same player
+**Date Resolved**: 2025-11-15
 
 ---
 
@@ -204,7 +204,7 @@ From `spec/open-questions.md`:
 
 | Area | File | Priority | Blocks | Recommendation Provided | Status |
 |------|------|----------|--------|------------------------|--------|
-| Command Error Handling | `command-error-handling.md` | High | Command parser | Yes | Open |
+| Command Error Handling | `command-error-handling.md` | High | Command parser | Yes | ✅ Resolved |
 | Concurrent Editing | `concurrent-editing.md` | High | Editing workflow | Yes | Open |
 | System Prompts | `system-prompts.md` | High | API integration | Yes | ✅ Resolved |
 | Player Management | `player-management.md` | High | Setup phase | Yes | ✅ Resolved |

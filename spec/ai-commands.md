@@ -88,10 +88,15 @@ The system extracts these commands from AI messages:
 
 ## Error Handling
 
-**UNDERSPECIFIED**: What happens when:
-- AI fails to use proper command format?
-- Required fields are missing?
-- Referenced parent doesn't exist?
-- Location reference is ambiguous?
+**v1 Strategy**: Emit error to chat, human decides recovery method.
 
-See `spec/underspecified/command-error-handling.md` for details.
+When commands fail to parse:
+- AI fails to use proper command format → error message in chat
+- Required fields are missing → error message specifies which field
+- Referenced parent doesn't exist → error message identifies missing reference
+- Location reference is ambiguous → error message (implementation detail)
+- Multiple commands outside allowed cases → error message
+
+**All-or-nothing**: If ANY error in multi-command response, abort ALL actions.
+
+See `spec/command-error-handling.md` for complete specification including error examples, message action menu, and recovery options.
