@@ -77,6 +77,43 @@ Standing among the ruins of the city gate, General Zhao addresses the captured d
 
 **Positioning**: `FIRST`, `LAST`, `AFTER <item-name>`, or `BEFORE <item-name>` (within parent event)
 
+## Positioning Rules
+
+**Type-scoped positioning**: Items are positioned relative to items of the **same type**.
+
+**Strict hierarchy**:
+- **Periods** contain **Events** contain **Scenes**
+- Periods are positioned in chronological timeline order (relative to other Periods)
+- Events are positioned within their parent Period (relative to other Events in that Period)
+- Scenes are positioned within their parent Event (relative to other Scenes in that Event)
+
+**No cross-type positioning**:
+- ❌ Invalid: `CREATE EVENT X AFTER Period Y` (Event positioned relative to Period)
+- ✅ Valid: `CREATE EVENT X IN Period Y AFTER Event Z` (Event positioned relative to Event)
+
+**How positioning works**:
+- `AFTER <item-name>` → Insert immediately after the named item (in same-type list)
+- `BEFORE <item-name>` → Insert immediately before the named item (in same-type list)
+- `FIRST` → Insert at beginning of list
+- `LAST` → Insert at end of list
+
+**Examples**:
+
+```
+Timeline has: Period A → Period B → Period C
+
+CREATE PERIOD The Renaissance AFTER The Dark Ages
+→ Period goes immediately after "The Dark Ages" in periods list
+
+Period "The Renaissance" has events: Event 1 → Event 2 → Event 3
+
+CREATE EVENT The Battle IN The Renaissance AFTER Event 2
+→ Event goes immediately after Event 2 in The Renaissance's event list
+→ New order: Event 1 → Event 2 → The Battle → Event 3
+```
+
+**No ambiguity**: There is exactly one valid position for each command.
+
 ## Command Parser
 
 The system extracts these commands from AI messages:

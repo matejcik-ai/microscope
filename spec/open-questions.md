@@ -6,9 +6,7 @@ Questions still needing Product Owner input:
 
 1. **Undo/redo functionality**: Should there be undo/redo during editable phase?
 
-4. **Timeline insertion logic**: When AI says "after Period X", how to handle if multiple valid positions exist?
-
-5. **Conversation switching**: When creating an item, should UI auto-switch to that item's conversation, or stay in meta?
+2. **Conversation switching**: When creating an item, should UI auto-switch to that item's conversation, or stay in meta?
 
 6. **System message format**: What's the exact format and styling for system messages in meta chat?
 
@@ -35,3 +33,8 @@ Questions still needing Product Owner input:
 
 **Q: AI command parsing errors**: What happens if AI fails to parse a command - retry automatically or ask human?
 **A**: v1 emits error to chat stream, human decides recovery method. No automatic retries. Lenient parsing for minor variations, strict on structure. All-or-nothing for multi-command responses (palette, bookends). Message action menu provides: show unparsed output, reparse, restart from here. Everything goes in conversation history so AI sees its errors. See `spec/command-error-handling.md` for complete specification.
+
+**Date: 2025-11-15 - Timeline Insertion Logic**
+
+**Q: Timeline insertion logic**: When AI says "after Period X", how to handle if multiple valid positions exist?
+**A**: No ambiguity exists. Positioning is type-scoped - items are positioned relative to items of the same type only. Periods positioned relative to Periods, Events relative to Events (within parent Period), Scenes relative to Scenes (within parent Event). `AFTER X` means immediately after X in the same-type list. Cross-type positioning (e.g., "Event X AFTER Period Y") is invalid and triggers parse error. See `spec/ai-commands.md` Positioning Rules section.
