@@ -58,22 +58,24 @@ This document summarizes the areas of the specification that need more detail be
 
 ## Important (Affects UX)
 
-### 4. UI Design & Layout
-**File**: `spec/underspecified/ui-design.md`
+### 4. UI Design & Layout - RESOLVED ✅
+**File**: `spec/ui-design.md`
 
 **Problem**: Component hierarchy exists but visual design and UX patterns not specified.
 
-**Decisions Needed**:
-- Timeline layout: horizontal, vertical, tree, zoomable canvas?
-- How are events displayed within periods (nested, expandable)?
-- Conversation UI: side-by-side, modal, bottom panel, tabs?
-- System message styling?
-- Mobile support required for v1?
-- Which component library to use (Material-UI, Chakra, custom)?
+**Resolution**:
+- Mobile-first design with slide-out drawer/back arrow navigation
+- Vertical, nested, collapsible timeline (like file explorer)
+- Two-pane desktop view (timeline left, conversation right)
+- Chat bubbles (left/right by sender, multi-player aware)
+- System messages as centered bubbles with clickable links
+- Error messages styled distinctly with retry buttons
+- Loading: message shows as "sent", spinner while waiting
+- Light mode only v1, theme support deferred
+- Component library: tech lead decides
+- Minimal accessibility for v1
 
-**Impact**: Affects all UI implementation (Phases 1, 2, 4)
-
-**Recommendation**: Desktop-first, horizontal timeline at top, conversation below, simple chat bubbles, toast notifications for errors, use component library (Chakra UI)
+**Date Resolved**: 2025-11-15
 
 ---
 
@@ -183,7 +185,7 @@ From `spec/open-questions.md`:
 | Command Error Handling | `command-error-handling.md` | High | Command parser | Yes | ✅ Resolved |
 | System Prompts | `system-prompts.md` | High | API integration | Yes | ✅ Resolved |
 | Player Management | `player-management.md` | High | Setup phase | Yes | ✅ Resolved |
-| UI Design | `ui-design.md` | Medium | All UI | Yes | Open |
+| UI Design | `ui-design.md` | Medium | All UI | Yes | ✅ Resolved |
 | State Updates | `state-update-patterns.md` | Medium | State management | Yes | Open |
 | Testing Approach | `testing-approach.md` | Low | Development flow | Yes | Open |
 
