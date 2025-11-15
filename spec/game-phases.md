@@ -55,8 +55,19 @@
 3. AI uses CREATE command in meta conversation
 4. System creates item with metadata from command
 5. Expanded description becomes first message in item conversation
-6. **Metadata immediately frozen** (AI doesn't get editing phase)
-7. Human can now create their next item
+6. **Item becomes current unfrozen item** (AI's turn to work on it)
+7. Item conversation now open for discussion
+
+**During AI's editing phase**:
+- Players can discuss item in its conversation
+- Players can ask AI for clarification
+- AI can edit item metadata (v1 nice-to-have feature)
+- Human can view and potentially edit metadata (see underspecified/concurrent-editing.md)
+
+**Ending AI's turn**:
+- **Explicit**: Human clicks "End Turn" on AI's item → freezes it
+- **Implicit**: Human prompts AI "create the next item" → current freezes, AI creates new one
+- **Implicit**: Human creates their own item → AI's item freezes, human's becomes current
 
 ### Conversations During Editing
 
