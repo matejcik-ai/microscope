@@ -4,21 +4,25 @@ import { useState, useEffect, useCallback } from 'react';
 import type { GameState, Period, Event, Message, Conversation } from './types';
 import { saveGameState, loadGameState, getCurrentGameId, setCurrentGameId, createNewGame as createNewGameMetadata, migrateOldStorage } from './storage';
 
-function createEmptyGameState(gameId: string): GameState {
+function createEmptyGameState(gameId: string, gameName: string = 'New Game'): GameState {
   const metaConversationId = crypto.randomUUID();
 
   return {
     id: gameId,
+    name: gameName,
+    created: Date.now(),
+
+    // Start in setup phase
+    phase: 'setup',
+    currentTurn: null, // No turns during setup
+
     setup: {
       bigPicture: '',
       bookends: {
-        start: '',
-        end: '',
+        start: undefined,
+        end: undefined,
       },
-      palette: {
-        yes: [],
-        no: [],
-      },
+      palette: [],
     },
     periods: [],
     events: [],
@@ -70,7 +74,7 @@ export function useGameState(initialGameId?: string) {
       } else {
         // Game ID exists but no data - create new
         const metadata = createNewGameMetadata('New Game');
-        const newGame = createEmptyGameState(metadata.id);
+        const newGame = createEmptyGameState(metadata.id, metadata.name);
         setGameState(newGame);
         setCurrentGameIdState(metadata.id);
         setCurrentGameId(metadata.id);
@@ -79,7 +83,7 @@ export function useGameState(initialGameId?: string) {
     } else {
       // No current game - create first game
       const metadata = createNewGameMetadata('My First Game');
-      const newGame = createEmptyGameState(metadata.id);
+      const newGame = createEmptyGameState(metadata.id, metadata.name);
       setGameState(newGame);
       setCurrentGameIdState(metadata.id);
       setCurrentGameId(metadata.id);
@@ -100,7 +104,8 @@ export function useGameState(initialGameId?: string) {
     description: string,
     tone: 'light' | 'dark',
     isBookend: boolean = false,
-    placement?: { type: 'first' } | { type: 'after' | 'before', relativeTo: string }
+    placement?: { type: 'first' } | { type: 'after' | 'before', relativeTo: string },
+    createdByPlayerId: string = 'human'
   ): string | null => {
     let createdId: string | null = null;
     setGameState((prev) => {
@@ -138,6 +143,8 @@ export function useGameState(initialGameId?: string) {
         conversationId,
         order: 0, // Will be recalculated below
         isBookend,
+        frozen: false, // New periods start unfrozen
+        createdBy: { playerId: createdByPlayerId },
       };
 
       // Insert period at the calculated index
@@ -149,8 +156,30 @@ export function useGameState(initialGameId?: string) {
         p.order = idx;
       });
 
+      // Update bookend references if this is a bookend
+      let updatedSetup = prev.setup;
+      if (isBookend) {
+        // Determine if this should be start or end based on position
+        // If no bookends exist yet, first one is start, second is end
+        const existingBookends = prev.periods.filter(p => p.isBookend);
+        if (existingBookends.length === 0) {
+          // First bookend - make it the start
+          updatedSetup = {
+            ...prev.setup,
+            bookends: { ...prev.setup.bookends, start: periodId },
+          };
+        } else if (existingBookends.length === 1 && !prev.setup.bookends.end) {
+          // Second bookend - make it the end
+          updatedSetup = {
+            ...prev.setup,
+            bookends: { ...prev.setup.bookends, end: periodId },
+          };
+        }
+      }
+
       return {
         ...prev,
+        setup: updatedSetup,
         periods: newPeriods,
         conversations: {
           ...prev.conversations,
@@ -164,20 +193,26 @@ export function useGameState(initialGameId?: string) {
     return createdId;
   }, []);
 
-  const addPaletteItem = useCallback((category: 'yes' | 'no', item: string) => {
+  const addPaletteItem = useCallback((category: 'yes' | 'no', item: string, createdByPlayerId: string = 'human') => {
     setGameState((prev) => {
       if (!prev) return prev;
 
-      const newPalette = { ...prev.setup.palette };
-      if (!newPalette[category].includes(item)) {
-        newPalette[category] = [...newPalette[category], item];
-      }
+      // Check if item already exists
+      const exists = prev.setup.palette.some(p => p.text === item && p.type === category);
+      if (exists) return prev;
+
+      const newItem = {
+        id: crypto.randomUUID(),
+        text: item,
+        type: category,
+        createdBy: { playerId: createdByPlayerId },
+      };
 
       return {
         ...prev,
         setup: {
           ...prev.setup,
-          palette: newPalette,
+          palette: [...prev.setup.palette, newItem],
         },
       };
     });
@@ -197,7 +232,13 @@ export function useGameState(initialGameId?: string) {
     ) || null;
   }, [gameState]);
 
-  const addEvent = useCallback((periodId: string, title: string, description: string, tone: 'light' | 'dark'): string | null => {
+  const addEvent = useCallback((
+    periodId: string,
+    title: string,
+    description: string,
+    tone: 'light' | 'dark',
+    createdByPlayerId: string = 'human'
+  ): string | null => {
     let createdId: string | null = null;
     setGameState((prev) => {
       if (!prev) return prev;
@@ -214,6 +255,8 @@ export function useGameState(initialGameId?: string) {
         tone,
         conversationId,
         order: prev.events.filter(e => e.periodId === periodId).length,
+        frozen: false, // New events start unfrozen
+        createdBy: { playerId: createdByPlayerId },
       };
 
       return {
@@ -358,18 +401,31 @@ export function useGameState(initialGameId?: string) {
     });
   }, []);
 
-  const updatePalette = useCallback((yesItems: string[], noItems: string[]) => {
+  const updatePalette = useCallback((paletteItems: Array<{ text: string; type: 'yes' | 'no' }>) => {
     setGameState((prev) => {
       if (!prev) return prev;
+
+      // Convert to PaletteItem objects, preserving existing IDs if items haven't changed
+      const newPalette = paletteItems.map(item => {
+        // Try to find existing item with same text and type
+        const existing = prev.setup.palette.find(p => p.text === item.text && p.type === item.type);
+        if (existing) {
+          return existing; // Keep the existing item with its ID
+        }
+        // Create new item
+        return {
+          id: crypto.randomUUID(),
+          text: item.text,
+          type: item.type,
+          createdBy: { playerId: 'human' }, // Assume human created via editor
+        };
+      });
 
       return {
         ...prev,
         setup: {
           ...prev.setup,
-          palette: {
-            yes: yesItems,
-            no: noItems,
-          },
+          palette: newPalette,
         },
       };
     });
@@ -503,11 +559,154 @@ export function useGameState(initialGameId?: string) {
 
   const createNewGame = useCallback((name: string) => {
     const metadata = createNewGameMetadata(name);
-    const newGame = createEmptyGameState(metadata.id);
+    const newGame = createEmptyGameState(metadata.id, name);
     setGameState(newGame);
     setCurrentGameIdState(metadata.id);
     setCurrentGameId(metadata.id);
     saveGameState(newGame);
+  }, []);
+
+  // Phase transitions
+  const startGame = useCallback(() => {
+    setGameState((prev) => {
+      if (!prev || prev.phase !== 'setup') return prev;
+
+      // Freeze all existing periods and events
+      const frozenPeriods = prev.periods.map(p => ({ ...p, frozen: true }));
+      const frozenEvents = prev.events.map(e => ({ ...e, frozen: true }));
+
+      // Determine first player (human goes first by default)
+      const firstPlayer = prev.players[0];
+
+      // Add system message to meta conversation
+      const metaConversation = prev.conversations[prev.metaConversationId];
+      const newMessage: Message = {
+        id: crypto.randomUUID(),
+        role: 'system',
+        playerId: 'system',
+        content: `Game started! Entering Initial Round. It's ${firstPlayer.name}'s turn.`,
+        timestamp: Date.now(),
+        metadata: { type: 'phase_changed' },
+      };
+
+      return {
+        ...prev,
+        phase: 'initial_round',
+        currentTurn: { playerId: firstPlayer.id },
+        periods: frozenPeriods,
+        events: frozenEvents,
+        conversations: {
+          ...prev.conversations,
+          [prev.metaConversationId]: {
+            ...metaConversation,
+            messages: [...metaConversation.messages, newMessage],
+          },
+        },
+      };
+    });
+  }, []);
+
+  const endTurn = useCallback(() => {
+    setGameState((prev) => {
+      if (!prev || !prev.currentTurn) return prev;
+
+      // Freeze the current item being edited
+      // This will be the item in currentSelection
+      let updatedPeriods = prev.periods;
+      let updatedEvents = prev.events;
+      let updatedScenes = prev.scenes;
+
+      if (prev.currentSelection) {
+        const { type, id } = prev.currentSelection;
+
+        if (type === 'period') {
+          updatedPeriods = prev.periods.map(p =>
+            p.id === id ? { ...p, frozen: true } : p
+          );
+        } else if (type === 'event') {
+          updatedEvents = prev.events.map(e =>
+            e.id === id ? { ...e, frozen: true } : e
+          );
+        } else if (type === 'scene') {
+          updatedScenes = prev.scenes.map(s =>
+            s.id === id ? { ...s, frozen: true } : s
+          );
+        }
+      }
+
+      // Advance to next player
+      const currentPlayerIndex = prev.players.findIndex(p => p.id === prev.currentTurn?.playerId);
+      const nextPlayerIndex = (currentPlayerIndex + 1) % prev.players.length;
+      const nextPlayer = prev.players[nextPlayerIndex];
+
+      // Check if round is complete (everyone has gone once)
+      // For initial_round, transition to playing after everyone goes
+      let newPhase = prev.phase;
+      if (prev.phase === 'initial_round' && nextPlayerIndex === 0) {
+        // Round complete, everyone has gone once
+        newPhase = 'playing';
+      }
+
+      // Add system message to meta conversation
+      const metaConversation = prev.conversations[prev.metaConversationId];
+      const turnEndMessage: Message = {
+        id: crypto.randomUUID(),
+        role: 'system',
+        playerId: 'system',
+        content: newPhase !== prev.phase
+          ? `Initial Round complete! Entering Playing phase. It's ${nextPlayer.name}'s turn.`
+          : `Turn ended. It's now ${nextPlayer.name}'s turn.`,
+        timestamp: Date.now(),
+        metadata: { type: 'turn_ended' },
+      };
+
+      return {
+        ...prev,
+        phase: newPhase,
+        currentTurn: { playerId: nextPlayer.id },
+        periods: updatedPeriods,
+        events: updatedEvents,
+        scenes: updatedScenes,
+        conversations: {
+          ...prev.conversations,
+          [prev.metaConversationId]: {
+            ...metaConversation,
+            messages: [...metaConversation.messages, turnEndMessage],
+          },
+        },
+      };
+    });
+  }, []);
+
+  const freezeItem = useCallback((type: 'period' | 'event' | 'scene', id: string) => {
+    setGameState((prev) => {
+      if (!prev) return prev;
+
+      if (type === 'period') {
+        return {
+          ...prev,
+          periods: prev.periods.map(p =>
+            p.id === id ? { ...p, frozen: true } : p
+          ),
+        };
+      } else if (type === 'event') {
+        return {
+          ...prev,
+          events: prev.events.map(e =>
+            e.id === id ? { ...e, frozen: true } : e
+          ),
+        };
+      } else if (type === 'scene') {
+        return {
+          ...prev,
+          scenes: prev.scenes.map(s =>
+            s.id === id ? { ...s, frozen: true } : s
+          ),
+        };
+      }
+
+      return prev;
+    });
   }, []);
 
   return {
@@ -536,5 +735,8 @@ export function useGameState(initialGameId?: string) {
     switchGame,
     createNewGame,
     loadGame,
+    startGame,
+    endTurn,
+    freezeItem,
   };
 }

@@ -85,14 +85,14 @@ export default function Timeline({ gameState, onSelect, selectedId, selectedType
           )}
         </div>
 
-        {gameState.setup.palette.yes.length > 0 ? (
+        {gameState.setup.palette.filter(p => p.type === 'yes').length > 0 ? (
           <div style={{ marginBottom: '0.5rem' }}>
             <div style={{ fontSize: '0.75rem', color: '#4caf50', fontWeight: '600', marginBottom: '0.25rem' }}>
               ✓ Yes (include):
             </div>
             <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.75rem', color: '#333' }}>
-              {gameState.setup.palette.yes.map((item, i) => (
-                <li key={i}>{item}</li>
+              {gameState.setup.palette.filter(p => p.type === 'yes').map((item) => (
+                <li key={item.id}>{item.text}</li>
               ))}
             </ul>
           </div>
@@ -102,14 +102,14 @@ export default function Timeline({ gameState, onSelect, selectedId, selectedType
           </div>
         )}
 
-        {gameState.setup.palette.no.length > 0 ? (
+        {gameState.setup.palette.filter(p => p.type === 'no').length > 0 ? (
           <div>
             <div style={{ fontSize: '0.75rem', color: '#f44336', fontWeight: '600', marginBottom: '0.25rem' }}>
               ✗ No (exclude):
             </div>
             <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.75rem', color: '#333' }}>
-              {gameState.setup.palette.no.map((item, i) => (
-                <li key={i}>{item}</li>
+              {gameState.setup.palette.filter(p => p.type === 'no').map((item) => (
+                <li key={item.id}>{item.text}</li>
               ))}
             </ul>
           </div>

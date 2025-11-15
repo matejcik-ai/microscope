@@ -20,13 +20,16 @@ export function serializeGameState(gameState: GameState): string {
   sections.push(`  End: ${gameState.setup.bookends.end || '(not yet defined)'}`);
   sections.push('');
 
-  if (gameState.setup.palette.yes.length > 0 || gameState.setup.palette.no.length > 0) {
+  if (gameState.setup.palette.length > 0) {
     sections.push('Palette:');
-    if (gameState.setup.palette.yes.length > 0) {
-      sections.push(`  Things we WANT: ${gameState.setup.palette.yes.join(', ')}`);
+    const yesItems = gameState.setup.palette.filter(p => p.type === 'yes');
+    const noItems = gameState.setup.palette.filter(p => p.type === 'no');
+
+    if (yesItems.length > 0) {
+      sections.push(`  Things we WANT: ${yesItems.map(p => p.text).join(', ')}`);
     }
-    if (gameState.setup.palette.no.length > 0) {
-      sections.push(`  Things we DON'T want: ${gameState.setup.palette.no.join(', ')}`);
+    if (noItems.length > 0) {
+      sections.push(`  Things we DON'T want: ${noItems.map(p => p.text).join(', ')}`);
     }
     sections.push('');
   }

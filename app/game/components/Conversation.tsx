@@ -426,6 +426,7 @@ function MessageBubble({
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
+  const [showRaw, setShowRaw] = useState(false); // Toggle for showing raw content
 
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
@@ -433,6 +434,7 @@ function MessageBubble({
   const isAI = message.role === 'assistant';
   const isPending = message.pending || false;
   const hasLink = message.metadata?.linkTo && onNavigateToObject;
+  const hasRawContent = !!message.rawContent && message.rawContent !== message.content;
 
   const handleClick = () => {
     if (hasLink) {
@@ -484,10 +486,11 @@ function MessageBubble({
     }
   };
 
-  // Process content for newline visibility
+  // Process content for display (raw vs processed, newlines visibility)
+  const baseContent = showRaw && message.rawContent ? message.rawContent : message.content;
   const displayContent = showNewlines
-    ? message.content.replace(/\n/g, '↵\n')
-    : message.content;
+    ? baseContent.replace(/\n/g, '↵\n')
+    : baseContent;
 
   return (
     <div style={{
@@ -662,6 +665,22 @@ function MessageBubble({
                 }}
               >
                 ▶️ Rerun from here
+              </button>
+            )}
+            {hasRawContent && (
+              <button
+                onClick={() => setShowRaw(!showRaw)}
+                style={{
+                  padding: '0.375rem 0.75rem',
+                  background: showRaw ? '#9c27b0' : '#f0f0f0',
+                  color: showRaw ? 'white' : '#333',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                }}
+              >
+                {showRaw ? '👁️ Show Processed' : '🔍 Show Unprocessed'}
               </button>
             )}
           </div>
