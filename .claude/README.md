@@ -31,11 +31,12 @@ This directory contains persistent sub-agent configurations for the Microscope R
 
 **When to use**: When Tech Lead has a clearly defined implementation task.
 
-### Spec Compliance Checker (`agents/spec-compliance.md`)
-- Reviews code against specification
-- Flags any deviations (pedantically)
-- Checks data model, constraints, flows
-- Provides detailed review reports
+### Spec Compliance & Architecture Review (`agents/spec-compliance.md`)
+- Critically evaluates BOTH specification AND code
+- Reviews code against spec but applies engineering judgment
+- Proposes spec changes when code deviates for good reasons
+- Flags spec issues revealed by implementation
+- Protects non-negotiable constraints
 
 **When to use**: After Implementation completes a feature, before merging.
 
@@ -49,8 +50,10 @@ This directory contains persistent sub-agent configurations for the Microscope R
 
 ## Workflow
 
+### Standard Implementation Flow
+
 ```
-User Request
+Product Owner Request
     ↓
 Project Manager
     ├─→ Identifies next task
@@ -61,8 +64,65 @@ Project Manager
             ├─→ Breaks down task
             ├─→ Launches QA (write tests first)
             ├─→ Launches Implementation
-            ├─→ Launches Spec Compliance (review)
-            └─→ Launches QA (verify tests pass)
+            └─→ Launches Spec Compliance & Architecture Review
+                    ↓
+                Review Outcomes:
+
+                ┌─→ PASS
+                │      ├─→ Launch QA (verify tests)
+                │      ├─→ Integrate code
+                │      └─→ Report to PM
+                │
+                ├─→ REJECT (Critical violations)
+                │      └─→ Back to Implementation (fix issues)
+                │
+                ├─→ CONDITIONAL PASS (Reasonable deviation)
+                │      ├─→ Tech Lead evaluates proposal
+                │      ├─→ Escalate to Product Owner
+                │      └─→ Product Owner decides:
+                │             ├─→ Approved: Update spec, merge code
+                │             ├─→ Rejected: Back to Implementation
+                │             └─→ Modified: Update spec, adjust code
+                │
+                └─→ BLOCKED (Spec issue found)
+                       ├─→ Tech Lead validates issue
+                       ├─→ Escalate to Product Owner
+                       └─→ Product Owner resolves:
+                              └─→ Clarify spec, resume implementation
+```
+
+### Spec Change Proposal Flow
+
+When implementation reveals spec improvements:
+
+```
+Spec Compliance finds reasonable deviation
+    ↓
+Proposes spec change to Tech Lead
+    ↓
+Tech Lead evaluates:
+    - Technical merit
+    - Impact and risk
+    - Alternatives
+    ↓
+Tech Lead escalates to Product Owner with:
+    - Clear proposal
+    - Rationale
+    - Impact analysis
+    - Recommendation
+    ↓
+Product Owner decides:
+    ├─→ Approved
+    │      ├─→ Tech Lead updates spec files
+    │      ├─→ Code merged
+    │      └─→ Team notified
+    │
+    ├─→ Rejected
+    │      └─→ Implementation rewrites to match spec
+    │
+    └─→ Modified
+           ├─→ Tech Lead updates spec with PO's version
+           └─→ Implementation adjusts if needed
 ```
 
 ## Spec Organization
@@ -95,10 +155,12 @@ Items in `spec/underspecified/` need user input before full implementation:
 ## How to Use
 
 1. **Start with Project Manager**: Always begin by consulting PM agent to determine next task
-2. **Follow the workflow**: PM → Tech Lead → QA (tests) → Implementation → Spec Compliance → QA (verify)
+2. **Follow the workflow**: PM → Tech Lead → QA (tests) → Implementation → Spec Compliance → (handle review outcome)
 3. **Reference spec files**: All agents should reference relevant spec files for their work
 4. **Respect constraints**: See `spec/overview.md` for non-negotiable constraints
-5. **Flag ambiguities**: When spec is unclear, escalate to user (don't guess)
+5. **Propose improvements**: When spec has issues, propose changes through Tech Lead
+6. **Product Owner approves all spec changes**: No agent modifies spec without explicit approval
+7. **Document decisions**: Record why spec changes were approved/rejected
 
 ## Key Constraints (from spec/overview.md)
 
@@ -112,10 +174,40 @@ DO NOT:
 7. Store API key per-game (it's global only)
 8. Allow gameplay without API key
 
+## Key Principles
+
+### Spec Evolution
+- **Spec is living document**: Implementation insights lead to spec improvements
+- **Critical thinking required**: Don't be pedantic for pedantry's sake
+- **Product Owner is arbiter**: All spec changes require explicit approval
+- **No silent drift**: Code must match spec; if they diverge, propose spec update
+
+### Review Philosophy
+- **Protect constraints**: Non-negotiables are truly non-negotiable
+- **Apply judgment**: Distinguish real violations from nitpicks
+- **Propose improvements**: If implementation is better, update the spec
+- **Flag ambiguities**: Don't implement around unclear spec—clarify it
+
+### Collaboration
+- **Tech Lead coordinates**: Evaluates proposals, escalates to Product Owner
+- **Spec Compliance critiques**: Reviews both code AND spec quality
+- **Product Owner decides**: Final say on all spec changes
+- **Team implements**: Builds exactly what spec defines
+
 ## Current Status
 
-The specification has been organized and agent roles defined. Next steps:
+The specification has been organized and agent roles defined with spec evolution workflow.
+
+### Agent Configuration Complete
+- ✅ Project Manager (maintains todo list, coordinates work)
+- ✅ Tech Lead (handles spec change proposals, delegates work)
+- ✅ Implementation (writes code to spec)
+- ✅ Spec Compliance & Architecture Review (critical evaluation of spec + code)
+- ✅ QA/Testing (TDD approach)
+
+### Next Steps
 1. Project Manager reviews current codebase
 2. PM creates initial todo list from `spec/implementation-plan.md`
 3. PM identifies first task (likely Phase 0: Foundation)
 4. PM launches Tech Lead to begin implementation
+5. Team iterates with spec evolution as needed
