@@ -2,7 +2,7 @@
 
 ## Request Structure (Every API Call)
 
-See `spec/underspecified/system-prompts.md` for detailed architecture.
+See `spec/system-prompts.md` for detailed architecture.
 
 ```javascript
 const apiRequest = {
@@ -108,7 +108,7 @@ Includes all messages from conversation start to present, formatted chronologica
 
 ## System Prompts
 
-See `spec/underspecified/system-prompts.md` for complete specifications including:
+See `spec/system-prompts.md` for complete specifications including:
 - Base system prompt templates for each conversation type
 - Persona prompt library (v1: single "generic RPG player" persona)
 - Game context formatting

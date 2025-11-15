@@ -46,7 +46,7 @@ This document summarizes the areas of the specification that need more detail be
 ---
 
 ### 3. System Prompts - RESOLVED ✅
-**File**: `spec/underspecified/system-prompts.md`
+**File**: `spec/system-prompts.md`
 
 **Problem**: Spec mentions system prompts but doesn't specify exact content.
 
