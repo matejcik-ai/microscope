@@ -112,8 +112,8 @@ type Message = {
   content: string;
 
   // For system messages
-  type?: 'item_created' | 'turn_ended' | 'phase_changed';
-  metadata?: any;
+  type?: 'item_created' | 'turn_ended' | 'phase_changed' | 'metadata_changed' | 'error' | 'api_failure';
+  metadata?: any; // e.g., {itemId, field, oldValue, newValue} for metadata_changed
 }
 
 type Player = {
