@@ -69,25 +69,23 @@ type Game = {
 
 ### Implementation for v1
 
-**Hard-coded persona** (example):
+**Hard-coded persona**:
 ```typescript
 const DEFAULT_PERSONA: PersonaDefinition = {
-  id: 'balanced',
-  name: 'Balanced Co-player',
-  description: 'A thoughtful collaborator who explores both light and dark moments',
-  systemPrompt: `You are playing Microscope RPG as a collaborative storyteller.
-You create engaging periods, events, and scenes that build on the shared history.
-You balance light and dark tones, and focus on making the timeline interesting
-and coherent. You ask clarifying questions when needed and respect the established
-facts of the game.`
+  id: 'generic',
+  name: 'Generic Co-player',
+  description: 'A balanced, neutral collaborator',
+  systemPrompt: '' // Empty - relies on base system prompt (see system-prompts.md)
 };
 ```
+
+**Note**: The collaborative storyteller guidance ("You create engaging periods, events, and scenes...") is part of the **base system prompt** for all conversation types, not persona-specific. See `spec/underspecified/system-prompts.md` for details.
 
 **Game creation flow**:
 1. Human creates new game
 2. System automatically creates two players:
    - Human player (type: 'human')
-   - AI player (type: 'ai', personaId: 'balanced')
+   - AI player (type: 'ai', personaId: 'generic')
 3. Players locked for duration of game
 
 **AI prompting** (human-driven):

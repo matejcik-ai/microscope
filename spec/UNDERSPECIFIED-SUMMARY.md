@@ -45,20 +45,20 @@ This document summarizes the areas of the specification that need more detail be
 
 ---
 
-### 3. System Prompts
+### 3. System Prompts - RESOLVED ✅
 **File**: `spec/underspecified/system-prompts.md`
 
 **Problem**: Spec mentions system prompts but doesn't specify exact content.
 
-**Decisions Needed**:
-- What goes in meta conversation system prompt?
-- What goes in item conversation system prompt?
-- How do AI personas integrate with system prompts?
-- Should full Microscope rules be included or assume AI knows them?
+**Resolution**:
+- Detailed system prompt templates for each conversation type (meta, period, event, scene)
+- Base prompts include collaborative storyteller guidance
+- Persona prompts add personality variations on top
+- v1 has single 'generic' persona with empty persona prompt
+- Phase-specific command availability documented
+- Cache structure with 4 breakpoints specified
 
-**Impact**: Blocks API integration (Phase 3)
-
-**Recommendation**: Keep prompts minimal, include only current-phase relevant info, append persona prompts to base system prompt
+**Date Resolved**: 2025-11-15
 
 ---
 
@@ -206,7 +206,7 @@ From `spec/open-questions.md`:
 |------|------|----------|--------|------------------------|--------|
 | Command Error Handling | `command-error-handling.md` | High | Command parser | Yes | Open |
 | Concurrent Editing | `concurrent-editing.md` | High | Editing workflow | Yes | Open |
-| System Prompts | `system-prompts.md` | High | API integration | Yes | Open |
+| System Prompts | `system-prompts.md` | High | API integration | Yes | ✅ Resolved |
 | Player Management | `player-management.md` | High | Setup phase | Yes | ✅ Resolved |
 | UI Design | `ui-design.md` | Medium | All UI | Yes | Open |
 | State Updates | `state-update-patterns.md` | Medium | State management | Yes | Open |

@@ -4,9 +4,7 @@
 
 Questions still needing Product Owner input:
 
-1. **Bookend periods in setup**: Should bookend periods have conversations in setup phase, or stay empty until game starts?
-
-2. **AI command parsing errors**: What happens if AI fails to parse a command - retry automatically or ask human?
+1. **AI command parsing errors**: What happens if AI fails to parse a command - retry automatically or ask human?
 
 3. **Undo/redo functionality**: Should there be undo/redo during editable phase?
 
@@ -25,7 +23,12 @@ Questions still needing Product Owner input:
 **Date: 2025-11-15 - Player Management**
 
 **Q: AI persona limits**: Max number of AI personas to support in v1?
-**A**: v1 has exactly ONE AI player with ONE hard-coded persona ("balanced"). Future versions will have persona library with picker.
+**A**: v1 has exactly ONE AI player with ONE hard-coded persona ("generic"). Future versions will have persona library with picker.
 
 **Q: Player turn order**: Should turn order be randomized, or in player creation order, or user-specified?
 **A**: v1 is human-driven - no automatic turn management. Human prompts AI whenever they want input. Turn order is a v2 feature.
+
+**Date: 2025-11-15 - Bookend Periods**
+
+**Q: Bookend periods in setup**: Should bookend periods have conversations in setup phase, or stay empty until game starts?
+**A**: Bookend periods work like any other period in terms of UI and data model - they DO have conversations. However, in typical play, these conversations are created empty (no initial message like items created via CREATE command). Human players CAN switch to bookend period conversations and discuss them, but the content is typically never created. The conversation exists but starts empty.

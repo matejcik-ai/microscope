@@ -15,7 +15,9 @@
 
 3. **All items editable** during setup
 4. Human confirms "start game" → moves to initial_round phase
-5. At phase transition, freeze all existing items
+5. At phase transition, freeze all existing periods (bookends)
+   - Note: Palette is NEVER frozen - human can edit/add/remove palette items at any time
+   - AI loses palette editing commands after setup phase
 
 ## Initial Round (v1)
 **Human-driven creation of initial periods and events.**
