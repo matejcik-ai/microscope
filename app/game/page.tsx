@@ -53,6 +53,7 @@ export default function GamePage() {
   const [showPaletteEditor, setShowPaletteEditor] = useState(false);
   const [restoreContent, setRestoreContent] = useState<string | null>(null);
   const [apiSettings, setApiSettings] = useState<APISettings | null>(null);
+  const [debugPreviewData, setDebugPreviewData] = useState<any | null>(null);
 
   // Load global API settings on mount
   useEffect(() => {
@@ -530,13 +531,26 @@ export default function GamePage() {
     const conversation = gameState.conversations[conversationId];
     if (!conversation) return;
 
+    // FIX: Build updated gameState with the new message included
+    // React's setState is async, so gameState doesn't include the message yet
+    const updatedGameState = {
+      ...gameState,
+      conversations: {
+        ...gameState.conversations,
+        [conversationId]: {
+          ...conversation,
+          messages: [...conversation.messages, pendingMessage],
+        },
+      },
+    };
+
     try {
       // New API structure per spec: pass full gameState and currentConversationId
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          gameState, // Full game state for context building
+          gameState: updatedGameState, // Use updated state with message included
           currentConversationId: conversationId,
           apiSettings: apiSettings,
         }),
@@ -584,6 +598,48 @@ export default function GamePage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDebugPreview = (content: string) => {
+    if (!gameState.currentSelection) return;
+
+    const conversationId = getConversationId();
+    if (!conversationId) return;
+
+    const conversation = gameState.conversations[conversationId];
+    if (!conversation) return;
+
+    // Build the pending message
+    const pendingMessage = {
+      id: crypto.randomUUID(),
+      role: 'user' as const,
+      playerId: 'human',
+      playerName: 'You',
+      content,
+      timestamp: Date.now(),
+      pending: true,
+    };
+
+    // Build updated gameState with the message included (same as in handleSendMessage)
+    const updatedGameState = {
+      ...gameState,
+      conversations: {
+        ...gameState.conversations,
+        [conversationId]: {
+          ...conversation,
+          messages: [...conversation.messages, pendingMessage],
+        },
+      },
+    };
+
+    // Build the exact request body that would be sent to the API
+    const requestBody = {
+      gameState: updatedGameState,
+      currentConversationId: conversationId,
+      apiSettings: apiSettings,
+    };
+
+    setDebugPreviewData(requestBody);
   };
 
   const getCurrentContext = (): string => {
@@ -1080,6 +1136,7 @@ export default function GamePage() {
             conversation={getSelectedConversation()}
             title={getTitle()}
             onSendMessage={handleSendMessage}
+            onDebugPreview={handleDebugPreview}
             onNavigateToObject={(type, id) => setSelection(type, id)}
             restoreContent={restoreContent}
             isLoading={isLoading}
@@ -1101,6 +1158,149 @@ export default function GamePage() {
           onClose={() => setShowAPISettings(false)}
           canClose={!!apiSettings?.apiKey}
         />
+      )}
+
+      {/* Debug Preview Modal */}
+      {debugPreviewData && (
+        <div
+          onClick={() => setDebugPreviewData(null)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.7)',
+            zIndex: 2000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '2rem',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: '8px',
+              width: '100%',
+              maxWidth: '1200px',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            }}
+          >
+            <div style={{
+              padding: '1.5rem',
+              borderBottom: '1px solid #e0e0e0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '600' }}>
+                🐛 Debug: API Request Preview
+              </h2>
+              <button
+                onClick={() => setDebugPreviewData(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: '#666',
+                  padding: '0',
+                  width: '32px',
+                  height: '32px',
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '1.5rem',
+            }}>
+              <div style={{
+                background: '#1e1e1e',
+                color: '#d4d4d4',
+                padding: '1rem',
+                borderRadius: '4px',
+                fontSize: '0.875rem',
+                fontFamily: 'monospace',
+                overflowX: 'auto',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all',
+              }}>
+                {JSON.stringify(debugPreviewData, null, 2)}
+              </div>
+            </div>
+            <div style={{
+              padding: '1.5rem',
+              borderTop: '1px solid #e0e0e0',
+              display: 'flex',
+              gap: '1rem',
+              justifyContent: 'flex-end',
+            }}>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(JSON.stringify(debugPreviewData, null, 2));
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: '#f0f0f0',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                }}
+              >
+                📋 Copy JSON
+              </button>
+              <button
+                onClick={() => setDebugPreviewData(null)}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: '#f0f0f0',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                }}
+              >
+                Close
+              </button>
+              <button
+                onClick={async () => {
+                  // Actually send the message
+                  const conversationId = debugPreviewData.currentConversationId;
+                  const lastMessage = debugPreviewData.gameState.conversations[conversationId].messages.slice(-1)[0];
+
+                  setDebugPreviewData(null);
+
+                  if (lastMessage && lastMessage.role === 'user') {
+                    await handleSendMessage(lastMessage.content);
+                  }
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: '#1976d2',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                }}
+              >
+                ▶️ Send
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Add Period Modal */}

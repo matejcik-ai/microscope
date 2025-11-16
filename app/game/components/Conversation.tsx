@@ -8,6 +8,7 @@ interface ConversationProps {
   conversation: Conversation | null;
   title: string;
   onSendMessage: (content: string) => void;
+  onDebugPreview?: (content: string) => void;
   onNavigateToObject?: (type: 'period' | 'event' | 'scene', id: string) => void;
   restoreContent?: string | null;
   isLoading?: boolean;
@@ -26,6 +27,7 @@ export default function ConversationView({
   conversation,
   title,
   onSendMessage,
+  onDebugPreview,
   onNavigateToObject,
   restoreContent = null,
   isLoading = false,
@@ -262,6 +264,26 @@ export default function ConversationView({
           >
             ⤢ Fullscreen
           </button>
+          {onDebugPreview && (
+            <button
+              type="button"
+              onClick={() => onDebugPreview(input.trim())}
+              disabled={!input.trim() || isLoading}
+              style={{
+                padding: '0.5rem 1rem',
+                background: input.trim() && !isLoading ? '#ff9800' : '#ccc',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: input.trim() && !isLoading ? 'pointer' : 'not-allowed',
+                fontSize: '0.875rem',
+                fontWeight: '500',
+              }}
+              title="Preview API request JSON"
+            >
+              🐛 Debug
+            </button>
+          )}
           <button
             type="submit"
             disabled={!input.trim() || isLoading}
@@ -376,6 +398,29 @@ export default function ConversationView({
               >
                 Cancel
               </button>
+              {onDebugPreview && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDebugPreview(input.trim());
+                    setIsFullscreen(false);
+                  }}
+                  disabled={!input.trim() || isLoading}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: input.trim() && !isLoading ? '#ff9800' : '#ccc',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: input.trim() && !isLoading ? 'pointer' : 'not-allowed',
+                    fontSize: '1rem',
+                    fontWeight: '500',
+                  }}
+                  title="Preview API request JSON"
+                >
+                  🐛 Debug
+                </button>
+              )}
               <button
                 onClick={(e) => {
                   e.preventDefault();
