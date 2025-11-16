@@ -89,16 +89,28 @@ Then register it in `lib/ai/provider-factory.ts`.
 ```
 microscope/
 ├── app/                  # Next.js app directory
-│   ├── api/             # API routes
+│   ├── api/             # API routes (AI chat endpoint)
+│   ├── game/            # Main game page & components
 │   ├── layout.tsx       # Root layout
-│   └── page.tsx         # Home page
+│   └── page.tsx         # Landing page
 ├── lib/                 # Shared libraries
-│   └── ai/             # AI provider system
-│       ├── types.ts           # TypeScript interfaces
-│       ├── provider-factory.ts # Provider factory
-│       └── providers/         # Provider implementations
-│           ├── claude.ts
-│           └── openai.ts
+│   ├── ai/             # AI provider system
+│   │   ├── types.ts           # TypeScript interfaces
+│   │   ├── provider-factory.ts # Provider factory
+│   │   ├── providers/         # Provider implementations
+│   │   │   ├── claude.ts     # Anthropic SDK integration
+│   │   │   └── openai.ts     # Stub
+│   │   └── prompts/          # System prompts
+│   └── microscope/     # Game logic & state
+│       ├── types.ts           # Data model
+│       ├── game-state.ts      # State management
+│       ├── command-parser.ts  # AI command parsing
+│       ├── storage.ts         # localStorage persistence
+│       └── game-context-builder.ts # Prompt caching
+├── spec/               # Technical specification (source of truth)
+├── PROJECT_STATUS.md   # Current implementation status
+├── TEST_CASES.md       # Test specifications
+├── README.md           # This file
 ├── package.json
 ├── tsconfig.json
 └── next.config.mjs
