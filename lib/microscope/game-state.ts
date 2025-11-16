@@ -112,14 +112,14 @@ export function useGameState(initialGameId?: string) {
     isBookend: boolean = false,
     placement?: { type: 'first' } | { type: 'after' | 'before', relativeTo: string },
     createdByPlayerId: string = 'human'
-  ): string | null => {
-    let createdId: string | null = null;
+  ): { id: string; conversationId: string } | null => {
+    let createdData: { id: string; conversationId: string } | null = null;
     setGameState((prev) => {
       if (!prev) return prev;
 
       const conversationId = crypto.randomUUID();
       const periodId = crypto.randomUUID();
-      createdId = periodId;
+      createdData = { id: periodId, conversationId };
 
       // Determine the insertion index based on placement
       let insertIndex = prev.periods.length; // Default: append to end
@@ -196,7 +196,7 @@ export function useGameState(initialGameId?: string) {
         },
       };
     });
-    return createdId;
+    return createdData;
   }, []);
 
   const addPaletteItem = useCallback((category: 'yes' | 'no', item: string, createdByPlayerId: string = 'human') => {
@@ -244,14 +244,14 @@ export function useGameState(initialGameId?: string) {
     description: string,
     tone: 'light' | 'dark',
     createdByPlayerId: string = 'human'
-  ): string | null => {
-    let createdId: string | null = null;
+  ): { id: string; conversationId: string } | null => {
+    let createdData: { id: string; conversationId: string } | null = null;
     setGameState((prev) => {
       if (!prev) return prev;
 
       const conversationId = crypto.randomUUID();
       const eventId = crypto.randomUUID();
-      createdId = eventId;
+      createdData = { id: eventId, conversationId };
 
       const event: Event = {
         id: eventId,
@@ -277,7 +277,7 @@ export function useGameState(initialGameId?: string) {
         },
       };
     });
-    return createdId;
+    return createdData;
   }, []);
 
   const addScene = useCallback((
@@ -286,14 +286,14 @@ export function useGameState(initialGameId?: string) {
     answer: string,
     tone: 'light' | 'dark',
     createdByPlayerId: string = 'human'
-  ): string | null => {
-    let createdId: string | null = null;
+  ): { id: string; conversationId: string } | null => {
+    let createdData: { id: string; conversationId: string } | null = null;
     setGameState((prev) => {
       if (!prev) return prev;
 
       const conversationId = crypto.randomUUID();
       const sceneId = crypto.randomUUID();
-      createdId = sceneId;
+      createdData = { id: sceneId, conversationId };
 
       const scene = {
         id: sceneId,
@@ -319,7 +319,7 @@ export function useGameState(initialGameId?: string) {
         },
       };
     });
-    return createdId;
+    return createdData;
   }, []);
 
   const addMessage = useCallback((conversationId: string, message: Omit<Message, 'id' | 'timestamp'>) => {

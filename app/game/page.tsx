@@ -82,17 +82,10 @@ export default function GamePage() {
         const { title, tone, description, placement, expandedDescription } = command.data;
 
         // Create the period with optional placement (AI created)
-        const periodId = addPeriod(title, description, tone, false, placement, 'ai-1');
+        const period = addPeriod(title, description, tone, false, placement, 'ai-1');
 
-        if (!periodId) {
-          console.error('Failed to create period:', title);
-          break;
-        }
-
-        // Find the created period immediately (no setTimeout needed)
-        const period = gameState.periods.find(p => p.id === periodId);
         if (!period) {
-          console.error('Period not found after creation:', periodId);
+          console.error('Failed to create period:', title);
           break;
         }
 
@@ -152,17 +145,10 @@ export default function GamePage() {
         }
 
         // Create new bookend (AI created)
-        const periodId = addPeriod(title, description, tone, true, undefined, 'ai-1');
+        const period = addPeriod(title, description, tone, true, undefined, 'ai-1');
 
-        if (!periodId) {
-          console.error('Failed to create bookend:', title);
-          break;
-        }
-
-        // Find the created period immediately
-        const period = gameState.periods.find(p => p.id === periodId);
         if (!period) {
-          console.error('Bookend period not found after creation:', periodId);
+          console.error('Failed to create bookend:', title);
           break;
         }
 
@@ -206,17 +192,10 @@ export default function GamePage() {
         }
 
         // Create the event (AI created) with description from command
-        const eventId = addEvent(period.id, title, description || '', tone, 'ai-1');
+        const event = addEvent(period.id, title, description || '', tone, 'ai-1');
 
-        if (!eventId) {
-          console.error('Failed to create event:', title);
-          break;
-        }
-
-        // Find the created event immediately
-        const event = gameState.events.find(e => e.id === eventId);
         if (!event) {
-          console.error('Event not found after creation:', eventId);
+          console.error('Failed to create event:', title);
           break;
         }
 
@@ -273,17 +252,10 @@ export default function GamePage() {
         }
 
         // Create the scene (AI created)
-        const sceneId = addScene(event.id, question, answer, tone, 'ai-1');
+        const scene = addScene(event.id, question, answer, tone, 'ai-1');
 
-        if (!sceneId) {
-          console.error('Failed to create scene:', title);
-          break;
-        }
-
-        // Find the created scene immediately
-        const scene = gameState.scenes.find(s => s.id === sceneId);
         if (!scene) {
-          console.error('Scene not found after creation:', sceneId);
+          console.error('Failed to create scene:', title);
           break;
         }
 

@@ -197,6 +197,78 @@ DO NOT:
 - **Product Owner decides**: Final say on all spec changes
 - **Team implements**: Builds exactly what spec defines
 
+## React State Management Best Practices
+
+### Anti-Pattern: Reading State Immediately After Mutation
+
+**❌ WRONG - This is a critical bug:**
+```typescript
+// Calling a state setter function
+const periodId = addPeriod(title, description, tone, true, undefined, 'ai-1');
+
+// Immediately trying to access the new item from gameState
+const period = gameState.periods.find(p => p.id === periodId);
+// ⚠️  period will be undefined! gameState hasn't updated yet!
+```
+
+**Why this fails:**
+- `addPeriod()` calls `setGameState()` which is asynchronous
+- The state update happens in the next React render cycle
+- `gameState` still contains the OLD state when we try to access it
+- `.find()` returns `undefined` because the new item isn't in the array yet
+
+**✅ CORRECT - Return data from the mutation function:**
+```typescript
+// State mutation function returns both id and conversationId
+const addPeriod = useCallback((...): { id: string; conversationId: string } | null => {
+  let createdData: { id: string; conversationId: string } | null = null;
+  setGameState((prev) => {
+    const periodId = crypto.randomUUID();
+    const conversationId = crypto.randomUUID();
+    createdData = { id: periodId, conversationId };  // Capture data
+    // ... create and insert period ...
+    return newState;
+  });
+  return createdData;  // Return captured data
+}, []);
+
+// Now we can use the returned data directly
+const period = addPeriod(title, description, tone, true, undefined, 'ai-1');
+if (!period) {
+  console.error('Failed to create period');
+  break;
+}
+// ✅ period.id and period.conversationId are available immediately!
+addMessage(period.conversationId, { ... });
+```
+
+### Guidelines for State Mutations
+
+1. **Never read from `gameState` immediately after calling a mutation function**
+   - Mutations include: `addPeriod`, `addEvent`, `addScene`, `updatePeriod`, etc.
+   - The state object won't reflect changes until the next render
+
+2. **Return necessary data from mutation functions**
+   - If you need the ID, conversationId, or other generated values, return them
+   - Use a closure variable to capture data inside the `setGameState` callback
+
+3. **Prefer returning structured objects**
+   - Return `{ id, conversationId }` instead of just `id`
+   - This prevents needing to look up additional properties later
+
+4. **When you must read state after mutation, use useEffect**
+   - If you truly need the updated state, use `useEffect` with dependencies
+   - This runs AFTER React has updated the state and re-rendered
+
+5. **Watch for these red flags:**
+   - `add*()` or `update*()` followed immediately by `gameState.*.find()`
+   - Accessing `gameState` properties right after state mutations
+   - Console errors like "not found after creation"
+
+### Bug History
+
+**Issue #7 (Bookend Meta Chat):** Discovered that all item creation handlers (periods, events, scenes, bookends) had this anti-pattern. When creating items, the code tried to access them from `gameState` immediately after calling `add*()`, which returned `undefined`. This prevented meta chat messages from being emitted because the code couldn't find the `conversationId`. Fixed by changing return types from `string | null` to `{ id: string; conversationId: string } | null`.
+
 ## Current Status
 
 The specification has been organized and agent roles defined with spec evolution workflow.
