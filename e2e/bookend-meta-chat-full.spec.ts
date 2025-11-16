@@ -20,12 +20,20 @@ test.describe('Bookend Meta Chat (Issue #7)', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/game');
+    await expect(page.getByText('Loading game...')).not.toBeVisible({ timeout: 10000 });
 
-    // Wait for game to load
-    await expect(page.getByText('Loading game...')).not.toBeVisible({ timeout: 15000 });
+    // Set up test API key to prevent modal from blocking UI
+    await page.evaluate(() => {
+      localStorage.setItem(
+        'api-settings',
+        JSON.stringify({
+          provider: 'claude',
+          apiKey: 'sk-test-key-12345-do-not-use-in-production',
+          model: 'claude-3-5-sonnet-20241022',
+        })
+      );
+    });
 
-    // Set up test API key
-    await setupTestAPIKey(page);
     await page.reload();
     await expect(page.getByText('Loading game...')).not.toBeVisible({ timeout: 15000 });
 

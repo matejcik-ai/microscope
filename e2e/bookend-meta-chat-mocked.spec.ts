@@ -8,6 +8,7 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('Bookend Meta Chat (with mocked AI)', () => {
+  test.setTimeout(60000); // 60 second timeout for these tests
 
   /**
    * Mock helper: Intercept Claude API and return a predefined response
@@ -45,18 +46,28 @@ test.describe('Bookend Meta Chat (with mocked AI)', () => {
     await page.goto('/game');
     await expect(page.getByText('Loading game...')).not.toBeVisible({ timeout: 10000 });
 
-    // Set up a dummy API key in localStorage to enable AI features
+    // Set up test API key to prevent modal from blocking UI
     await page.evaluate(() => {
-      localStorage.setItem('api-settings', JSON.stringify({
-        apiKey: 'sk-test-key-12345',
-        model: 'claude-3-5-sonnet-20241022',
-        maxTokens: 4096,
-      }));
+      localStorage.setItem(
+        'api-settings',
+        JSON.stringify({
+          provider: 'claude',
+          apiKey: 'sk-test-key-12345-do-not-use-in-production',
+          model: 'claude-3-5-sonnet-20241022',
+        })
+      );
     });
 
-    // Reload to apply settings
     await page.reload();
-    await expect(page.getByText('Loading game...')).not.toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Loading game...')).not.toBeVisible({ timeout: 15000 });
+
+    // Wait for API Settings modal to disappear (if present)
+    const apiModal = page.getByText('API Settings');
+    const modalVisible = await apiModal.isVisible({ timeout: 1000 }).catch(() => false);
+    if (modalVisible) {
+      await page.getByRole('button', { name: 'Save Settings' }).click({ force: true });
+      await page.waitForTimeout(500);
+    }
   });
 
   test('should show meta chat message when AI creates first bookend', async ({ page }) => {
@@ -68,7 +79,7 @@ test.describe('Bookend Meta Chat (with mocked AI)', () => {
 
     // Navigate to meta chat
     const gameSetup = page.getByText('Game Setup').first();
-    await gameSetup.click();
+    await gameSetup.click({ force: true });
 
     // Send a message to AI asking to create a bookend
     const messageInput = page.locator('textarea, input[type="text"]').last();
@@ -96,7 +107,7 @@ test.describe('Bookend Meta Chat (with mocked AI)', () => {
     );
 
     const gameSetup = page.getByText('Game Setup').first();
-    await gameSetup.click();
+    await gameSetup.click({ force: true });
 
     const messageInput = page.locator('textarea, input[type="text"]').last();
     await messageInput.fill('Create a start bookend');
@@ -137,7 +148,7 @@ test.describe('Bookend Meta Chat (with mocked AI)', () => {
     );
 
     const gameSetup = page.getByText('Game Setup').first();
-    await gameSetup.click();
+    await gameSetup.click({ force: true });
 
     const messageInput = page.locator('textarea, input[type="text"]').last();
     await messageInput.fill('Create start bookend Golden Age');

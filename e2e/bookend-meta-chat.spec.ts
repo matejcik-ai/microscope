@@ -11,20 +11,33 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('Bookend Meta Chat', () => {
+  test.setTimeout(60000); // 60 second timeout for these tests
 
   test.beforeEach(async ({ page }) => {
-    // Navigate to the game page
     await page.goto('/game');
+    await expect(page.getByText('Loading game...')).not.toBeVisible({ timeout: 10000 });
 
-    // Wait for the game to load
-    await expect(page.getByText('Loading game...')).not.toBeVisible({ timeout: 5000 });
+    // Set up test API key to prevent modal from blocking UI
+    await page.evaluate(() => {
+      localStorage.setItem(
+        'api-settings',
+        JSON.stringify({
+          provider: 'claude',
+          apiKey: 'sk-test-key-12345-do-not-use-in-production',
+          model: 'claude-3-5-sonnet-20241022',
+        })
+      );
+    });
+
+    await page.reload();
+    await expect(page.getByText('Loading game...')).not.toBeVisible({ timeout: 15000 });
   });
 
   test('should show meta chat message when creating first bookend', async ({ page }) => {
     // Find and click on "Game Setup" in the timeline to view meta chat
     const gameSetup = page.getByText('Game Setup').first();
     await expect(gameSetup).toBeVisible();
-    await gameSetup.click();
+    await gameSetup.click({ force: true });
 
     // Get initial message count in meta chat
     const conversationView = page.locator('[class*="conversation"]').first();

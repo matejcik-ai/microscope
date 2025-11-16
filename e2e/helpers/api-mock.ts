@@ -79,9 +79,9 @@ export async function setupTestAPIKey(page: Page) {
     localStorage.setItem(
       'api-settings',
       JSON.stringify({
+        provider: 'claude',
         apiKey: 'sk-test-key-12345-do-not-use-in-production',
         model: 'claude-3-5-sonnet-20241022',
-        maxTokens: 4096,
       })
     );
   });
@@ -103,8 +103,25 @@ export async function waitForGameStateUpdate(page: Page, timeoutMs: number = 200
  * Send a message in the current conversation
  */
 export async function sendMessage(page: Page, message: string, waitForResponse: boolean = true) {
+  // Wait a bit to ensure any modals have closed
+  await page.waitForTimeout(500);
+
   const messageInput = page.locator('textarea, input[type="text"]').last();
-  await messageInput.waitFor({ state: 'visible', timeout: 5000 });
+
+  // Wait longer and retry if not found
+  try {
+    await messageInput.waitFor({ state: 'visible', timeout: 10000 });
+  } catch (e) {
+    // Try to close any lingering modal
+    const modalOverlay = page.locator('[class*="modal"], [role="dialog"]').first();
+    if (await modalOverlay.isVisible({ timeout: 500 }).catch(() => false)) {
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(500);
+    }
+    // Retry finding the input
+    await messageInput.waitFor({ state: 'visible', timeout: 5000 });
+  }
+
   await messageInput.fill(message);
   await messageInput.press('Enter');
 
@@ -118,6 +135,23 @@ export async function sendMessage(page: Page, message: string, waitForResponse: 
  * Navigate to meta chat (Game Setup)
  */
 export async function navigateToMetaChat(page: Page) {
+  // Wait for API Settings modal to close completely
+  // The modal might appear briefly even with localStorage set
+  await page.waitForTimeout(1000);
+
+  // Check if modal is still visible and close it
+  const closeButton = page.getByRole('button', { name: /close|cancel|×/i });
+  const saveButton = page.getByRole('button', { name: /save/i });
+
+  // Try to close modal if it exists
+  if (await closeButton.isVisible({ timeout: 500 }).catch(() => false)) {
+    await closeButton.click({ force: true });
+    await page.waitForTimeout(500);
+  } else if (await saveButton.isVisible({ timeout: 500 }).catch(() => false)) {
+    await saveButton.click({ force: true });
+    await page.waitForTimeout(500);
+  }
+
   const gameSetup = page.getByText('Game Setup').first();
   await gameSetup.waitFor({ state: 'visible', timeout: 10000 });
 

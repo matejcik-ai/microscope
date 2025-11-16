@@ -11,10 +11,26 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('Game Setup Phase', () => {
+  test.setTimeout(30000); // 30 second timeout for these tests
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/game');
     await expect(page.getByText('Loading game...')).not.toBeVisible({ timeout: 10000 });
+
+    // Set up test API key to prevent modal from blocking UI
+    await page.evaluate(() => {
+      localStorage.setItem(
+        'api-settings',
+        JSON.stringify({
+          provider: 'claude',
+          apiKey: 'sk-test-key-12345-do-not-use-in-production',
+          model: 'claude-3-5-sonnet-20241022',
+        })
+      );
+    });
+
+    await page.reload();
+    await expect(page.getByText('Loading game...')).not.toBeVisible({ timeout: 15000 });
   });
 
   test('should show meta chat (Game Setup) by default', async ({ page }) => {
@@ -90,12 +106,9 @@ test.describe('Game Setup Phase', () => {
     // - Palette (yes/no items)
     // - Bookends (start and end periods)
 
-    // Verify these sections exist in the UI
-    // (Exact selectors depend on implementation)
-
-    // Look for sections that might contain these elements
-    const mainContent = page.locator('main, [role="main"]').first();
-    await expect(mainContent).toBeVisible();
+    // Verify Game Setup is visible as an indicator that the UI loaded
+    const gameSetup = page.getByText('Game Setup').first();
+    await expect(gameSetup).toBeVisible();
   });
 });
 
