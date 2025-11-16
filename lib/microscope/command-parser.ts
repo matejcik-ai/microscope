@@ -51,6 +51,14 @@ export function parseAIResponse(response: string): ParsedResponse {
 
     const firstLine = lines[0].trim();
 
+    // Special handling for CREATE PALETTE - multi-line command
+    if (/^CREATE\s+PALETTE$/i.test(firstLine)) {
+      // Parse palette items from subsequent lines in this block
+      const paletteCommands = parsePaletteItems(lines.slice(1));
+      commands.push(...paletteCommands);
+      continue;
+    }
+
     // Try to parse as a command
     const parsedCommand = parseSingleCommand(firstLine);
 
@@ -127,6 +135,47 @@ function splitIntoBlocks(response: string): Array<{ lines: string[], original: s
 }
 
 /**
+ * Parse palette items from CREATE PALETTE command
+ * Format:
+ * - YES: Item description
+ * - NO: Item description
+ */
+function parsePaletteItems(lines: string[]): ParsedCommand[] {
+  const commands: ParsedCommand[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Match "- YES: description" or "- NO: description"
+    const yesMatch = /^-\s*YES:\s*(.+)$/i.exec(trimmed);
+    const noMatch = /^-\s*NO:\s*(.+)$/i.exec(trimmed);
+
+    if (yesMatch) {
+      const item = yesMatch[1].trim();
+      commands.push({
+        type: 'add-palette',
+        data: {
+          category: 'yes',
+          item: item,
+        },
+      });
+    } else if (noMatch) {
+      const item = noMatch[1].trim();
+      commands.push({
+        type: 'add-palette',
+        data: {
+          category: 'no',
+          item: item,
+        },
+      });
+    }
+    // Ignore lines that don't match the pattern
+  }
+
+  return commands;
+}
+
+/**
  * Parse a single command line
  *
  * Supports both new spec format and legacy format for backward compatibility.
@@ -156,16 +205,8 @@ function parseSingleCommand(commandLine: string): ParsedCommand {
  * CREATE PALETTE
  */
 function parseNewFormat(line: string): ParsedCommand {
-  // CREATE PALETTE - special format
-  if (/^CREATE\s+PALETTE$/i.test(line)) {
-    return {
-      type: 'add-palette',
-      data: {
-        category: 'palette', // Will be populated by subsequent lines
-        items: [], // Will be populated by subsequent lines
-      },
-    };
-  }
+  // CREATE PALETTE is handled specially in parseAIResponse
+  // because it's a multi-line command
 
   // CREATE PERIOD
   const periodResult = parseCreatePeriod(line);
