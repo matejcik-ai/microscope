@@ -4,7 +4,7 @@ This directory contains persistent sub-agent configurations for the Microscope R
 
 ## Agent Roles
 
-### Project Manager (`agents/project-manager.md`)
+### Project Manager (`.claude/agents/project-manager.md`)
 - Maintains big picture and full spec context
 - Keeps persistent todo list
 - Determines next atomic task
@@ -13,7 +13,7 @@ This directory contains persistent sub-agent configurations for the Microscope R
 
 **When to use**: Always start here. PM decides what to work on next and launches appropriate agents.
 
-### Tech Lead (`agents/tech-lead.md`)
+### Tech Lead (`.claude/agents/tech-lead.md`)
 - Reads spec and breaks down tasks
 - Delegates to Implementation agent
 - Integrates work from sub-agents
@@ -22,7 +22,7 @@ This directory contains persistent sub-agent configurations for the Microscope R
 
 **When to use**: When PM identifies a task that needs breakdown or coordination.
 
-### Implementation (`agents/implementation.md`)
+### Implementation (`.claude/agents/implementation.md`)
 - Writes TypeScript/React code
 - Follows spec exactly
 - Uses types from spec/data-model.md
@@ -31,7 +31,7 @@ This directory contains persistent sub-agent configurations for the Microscope R
 
 **When to use**: When Tech Lead has a clearly defined implementation task.
 
-### Spec Compliance & Architecture Review (`agents/spec-compliance.md`)
+### Spec Compliance & Architecture Review (`.claude/agents/spec-compliance.md`)
 - Critically evaluates BOTH specification AND code
 - Reviews code against spec but applies engineering judgment
 - Proposes spec changes when code deviates for good reasons
@@ -40,7 +40,7 @@ This directory contains persistent sub-agent configurations for the Microscope R
 
 **When to use**: After Implementation completes a feature, before merging.
 
-### QA/Testing (`agents/qa-tdd.md`)
+### QA/Testing (`.claude/agents/qa-tdd.md`)
 - Writes tests BEFORE implementation (TDD)
 - Verifies implementations pass tests
 - Tests game mechanics, state management, persistence
