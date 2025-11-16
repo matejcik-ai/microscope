@@ -11,6 +11,7 @@ import DebugConsole from './components/DebugConsole';
 import GameSwitcher from './components/GameSwitcher';
 import PaletteEditor from './components/PaletteEditor';
 import type { APISettings, Period, Event, Scene } from '@/lib/microscope/types';
+import buildInfo from '@/lib/build-info.json';
 
 export default function GamePage() {
   const {
@@ -881,6 +882,36 @@ export default function GamePage() {
           <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>
             Microscope RPG
           </h1>
+
+          {/* Git commit hash */}
+          <a
+            href={`https://github.com/${buildInfo.repoPath}/commit/${buildInfo.gitHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              padding: '0.25rem 0.75rem',
+              background: 'rgba(255,255,255,0.15)',
+              borderRadius: '12px',
+              fontSize: '0.7rem',
+              fontWeight: '500',
+              fontFamily: 'monospace',
+              color: 'white',
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.25)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+            }}
+            title={`Commit: ${buildInfo.gitHash}\nClick to view on GitHub`}
+          >
+            <span style={{ opacity: 0.7 }}>@</span>{buildInfo.gitHash}
+          </a>
 
           {/* Phase indicator */}
           <div style={{
