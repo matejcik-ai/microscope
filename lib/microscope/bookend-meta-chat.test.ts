@@ -1,17 +1,13 @@
 /**
  * Test case for bookend meta chat emission
+ * Run with: npx tsx lib/microscope/bookend-meta-chat.test.ts
  *
  * Bug #7: When AI creates/edits bookends, the message should appear in meta chat
- * with a clickable link, but currently editing existing bookends sends message
- * to currentConversationId without linkTo metadata.
- *
- * This is a documentation test since the actual code is in a React component.
- * To manually verify:
- * 1. Start a new game
- * 2. Have AI create a start bookend
- * 3. Have AI create another start bookend (this will edit the existing one)
- * 4. Check meta chat - should see "Updated start bookend: [title]" with clickable link
+ * with a clickable link. This test verifies the fix is in place.
  */
+
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 /**
  * Test Scenario 1: Creating a NEW bookend
@@ -79,7 +75,79 @@ export const TEST_STEPS = [
   'Verify: Bookend conversation opens',
 ];
 
-console.log('📋 Bookend Meta Chat Test Case');
-console.log('================================');
-console.log('\nThis test documents the expected behavior for issue #7');
-console.log('Run manual verification steps after fixing the code\n');
+/**
+ * Automated verification test
+ */
+function verifyBookendMetaChatFix() {
+  console.log('🔍 Verifying Bookend Meta Chat Bug #7\n');
+  console.log('=====================================\n');
+
+  const gamePagePath = join(__dirname, '../../app/game/page.tsx');
+  const content = readFileSync(gamePagePath, 'utf-8');
+
+  console.log('📋 Test Case: Editing existing bookend\n');
+
+  const lines = content.split('\n');
+  let foundBug = false;
+  let bugLocation = -1;
+
+  // Find the bookend edit section
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].includes('Edit existing bookend')) {
+      // Check next few lines for the bug
+      const nextLines = lines.slice(i, i + 15).join('\n');
+      if (nextLines.includes('addMessage(currentConversationId') &&
+          nextLines.includes('Updated') &&
+          nextLines.includes('bookend')) {
+        foundBug = true;
+        bugLocation = i + 1;
+
+        // Check if metadata.linkTo exists
+        const hasLinkTo = nextLines.includes('metadata:') && nextLines.includes('linkTo:');
+
+        console.log('❌ BUG FOUND at line', bugLocation);
+        console.log('\nBuggy code pattern:');
+        console.log('  - Uses currentConversationId instead of metaConversationId');
+        console.log('  - Missing metadata.linkTo:', !hasLinkTo ? '✗ YES' : '✓ NO');
+        console.log('\nExpected behavior:');
+        console.log('  - Should use metaConversationId');
+        console.log('  - Should include metadata.linkTo with type and id');
+        break;
+      }
+    }
+  }
+
+  if (!foundBug) {
+    console.log('✅ Bug appears to be fixed!');
+    console.log('\nVerifying correct pattern exists...\n');
+
+    // Look for the correct pattern
+    const correctPattern = /addMessage\(metaConversationId,\s*\{[^}]*Updated.*bookend.*metadata:\s*\{.*linkTo:/s;
+    if (correctPattern.test(content)) {
+      console.log('✓ Correct pattern found:');
+      console.log('  - Uses metaConversationId');
+      console.log('  - Has metadata.linkTo');
+      console.log('\n🎉 Test PASSES - Bug is fixed!');
+      return true;
+    } else {
+      console.log('⚠️  Could not verify correct pattern');
+      return false;
+    }
+  } else {
+    console.log('\n💡 Fix required:');
+    console.log('  1. Change currentConversationId → metaConversationId');
+    console.log('  2. Add metadata.linkTo object');
+    console.log('\n📝 Test status: FAILS');
+    return false;
+  }
+}
+
+// Run the test
+const testPassed = verifyBookendMetaChatFix();
+if (!testPassed) {
+  process.exit(1);
+}
+
+console.log('\n📋 Manual Verification Steps (if needed):');
+console.log('==========================================');
+console.log(TEST_STEPS.join('\n'));
