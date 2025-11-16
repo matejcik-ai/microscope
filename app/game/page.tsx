@@ -136,10 +136,16 @@ export default function GamePage() {
         if (existingBookend) {
           // Edit existing bookend
           updatePeriod(existingBookend.id, { title, description, tone });
-          addMessage(currentConversationId, {
+          addMessage(metaConversationId, {
             role: 'system',
             playerId: 'system',
             content: `Updated ${position} bookend: ${title}`,
+            metadata: {
+              linkTo: {
+                type: 'period',
+                id: existingBookend.id,
+              },
+            },
           });
           break;
         }
