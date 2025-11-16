@@ -164,6 +164,9 @@ Items in `spec/underspecified/` need user input before full implementation:
 
 ## Key Constraints (from spec/overview.md)
 
+DO:
+1. Use conventional-commit formatting of commit messages
+
 DO NOT:
 1. Use a backend (v1 is localStorage only)
 2. Truncate or summarize conversation history
