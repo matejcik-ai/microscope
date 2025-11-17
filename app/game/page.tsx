@@ -84,18 +84,22 @@ export default function GamePage() {
 
   const handleAICommand = async (command: ParsedCommand, currentConversationId: string, remainingMessage?: string) => {
     const metaConversationId = gameState.metaConversationId;
+    console.log('[handleAICommand] Handling command:', command.type, 'Meta conversation ID:', metaConversationId);
 
     switch (command.type) {
       case 'create-period': {
         const { title, tone, description, placement, expandedDescription } = command.data;
+        console.log('[handleAICommand] Creating period:', title);
 
         // Create the period with optional placement (AI created)
         const period = addPeriod(title, description, tone, false, placement, 'ai-1');
 
         if (!period) {
-          console.error('Failed to create period:', title);
+          console.error('[handleAICommand] Failed to create period:', title);
           break;
         }
+
+        console.log('[handleAICommand] Period created successfully:', period.id, 'Adding meta chat message to:', metaConversationId);
 
         // Add clickable link to meta chat
         addMessage(metaConversationId, {
@@ -109,6 +113,8 @@ export default function GamePage() {
             },
           },
         });
+
+        console.log('[handleAICommand] Meta chat message added');
 
         // Add expanded description as first message in period's conversation
         if (expandedDescription) {
@@ -414,8 +420,11 @@ export default function GamePage() {
    * Used by both initial response and reparse functionality
    */
   const processAIResponse = async (responseContent: string, conversationId: string) => {
+    console.log('[processAIResponse] Processing AI response:', responseContent.substring(0, 200));
+
     // Parse AI response for commands
     const parsed = parseAIResponse(responseContent);
+    console.log('[processAIResponse] Parsed commands:', parsed.commands.map(c => c.type));
 
     // Determine if we have create commands that should teleport the message
     const hasCreateCommand = parsed.commands.some(cmd =>
@@ -426,8 +435,10 @@ export default function GamePage() {
 
     // Handle all commands
     if (parsed.commands.length > 0 && parsed.commands[0].type !== 'none') {
+      console.log('[processAIResponse] Executing', parsed.commands.length, 'commands');
       for (const command of parsed.commands) {
         if (command.type !== 'none') {
+          console.log('[processAIResponse] Executing command:', command.type, command.data);
           // Pass remaining message only to create commands for teleporting
           const shouldTeleport = (command.type === 'create-period' ||
                                   command.type === 'create-event' ||
@@ -440,6 +451,8 @@ export default function GamePage() {
           );
         }
       }
+    } else {
+      console.log('[processAIResponse] No commands to execute');
     }
 
     return parsed;
