@@ -26,7 +26,7 @@ export default function Timeline({ gameState, onSelect, selectedId, selectedType
   };
 
   return (
-    <div className="timeline" style={{
+    <div className="timeline" data-testid="timeline" style={{
       height: '100%',
       overflowY: 'auto',
       borderRight: '1px solid #e0e0e0',
@@ -38,6 +38,7 @@ export default function Timeline({ gameState, onSelect, selectedId, selectedType
 
       {/* Meta / Setup */}
       <div
+        data-testid="meta-chat"
         onClick={() => onSelect('meta')}
         style={{
           padding: '0.75rem',
@@ -240,6 +241,8 @@ export default function Timeline({ gameState, onSelect, selectedId, selectedType
               <div key={period.id} style={{ marginBottom: '1rem' }}>
                 {/* Period */}
                 <div
+                  data-testid={`period-${period.id}`}
+                  data-frozen={period.frozen}
                   onClick={() => onSelect('period', period.id)}
                   style={{
                     padding: '0.75rem',
@@ -291,6 +294,8 @@ export default function Timeline({ gameState, onSelect, selectedId, selectedType
                 {getEventsForPeriod(period.id).map(event => (
                   <div
                     key={event.id}
+                    data-testid={`event-${event.id}`}
+                    data-frozen={event.frozen}
                     onClick={() => onSelect('event', event.id)}
                     style={{
                       padding: '0.5rem 0.75rem',

@@ -18,12 +18,10 @@ import {
 test.describe('Bookend Meta Chat (Issue #7)', () => {
   test.setTimeout(60000); // 60 second timeout for these tests
 
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/game');
-    await expect(page.getByText('Loading game...')).not.toBeVisible({ timeout: 10000 });
-
-    // Set up test API key to prevent modal from blocking UI
-    await page.evaluate(() => {
+  test.beforeEach(async ({ page, context }) => {
+    // Set up localStorage BEFORE navigating to the page
+    // This prevents the API Settings modal from appearing at all
+    await context.addInitScript(() => {
       localStorage.setItem(
         'api-settings',
         JSON.stringify({
@@ -34,8 +32,8 @@ test.describe('Bookend Meta Chat (Issue #7)', () => {
       );
     });
 
-    await page.reload();
-    await expect(page.getByText('Loading game...')).not.toBeVisible({ timeout: 15000 });
+    await page.goto('/game');
+    await expect(page.getByText('Loading game...')).not.toBeVisible({ timeout: 10000 });
 
     // Navigate to meta chat
     await navigateToMetaChat(page);

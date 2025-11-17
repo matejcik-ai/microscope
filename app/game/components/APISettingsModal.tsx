@@ -90,6 +90,7 @@ export default function APISettingsModal({
 
   return (
     <div
+      data-testid="api-settings-modal"
       style={{
         position: 'fixed',
         top: 0,
@@ -260,6 +261,7 @@ export default function APISettingsModal({
           >
             {canClose && onClose && (
               <button
+                data-testid="close-modal-button"
                 type="button"
                 onClick={onClose}
                 style={{
@@ -274,6 +276,7 @@ export default function APISettingsModal({
               </button>
             )}
             <button
+              data-testid="save-settings-button"
               type="submit"
               style={{
                 padding: '0.5rem 1rem',

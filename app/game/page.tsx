@@ -52,14 +52,21 @@ export default function GamePage() {
   const [showGameSwitcher, setShowGameSwitcher] = useState(false);
   const [showPaletteEditor, setShowPaletteEditor] = useState(false);
   const [restoreContent, setRestoreContent] = useState<string | null>(null);
-  const [apiSettings, setApiSettings] = useState<APISettings | null>(null);
+  // Load API settings - use lazy initializer to prevent hydration issues
+  const [apiSettings, setApiSettings] = useState<APISettings | null>(() => {
+    // This function runs once when component mounts
+    // On server: window is undefined, returns null
+    // On client (including test): reads from localStorage
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        return loadAPISettings();
+      }
+    } catch (e) {
+      console.error('Failed to load API settings:', e);
+    }
+    return null;
+  });
   const [debugPreviewData, setDebugPreviewData] = useState<any | null>(null);
-
-  // Load global API settings on mount
-  useEffect(() => {
-    const loaded = loadAPISettings();
-    setApiSettings(loaded);
-  }, []);
 
   if (!isLoaded || !gameState) {
     return (
@@ -909,6 +916,7 @@ export default function GamePage() {
           {/* Start Game button (only in setup phase) */}
           {gameState.phase === 'setup' && gameState.setup.bigPicture && gameState.setup.bookends.start && gameState.setup.bookends.end && (
             <button
+              data-testid="start-game-button"
               onClick={startGame}
               style={{
                 padding: '0.5rem 1rem',
@@ -928,6 +936,7 @@ export default function GamePage() {
           {/* End Turn button (only when it's human's turn and viewing an item) */}
           {gameState.currentTurn && gameState.currentTurn.playerId === 'human' && gameState.currentSelection && gameState.currentSelection.type !== 'meta' && (
             <button
+              data-testid="end-turn-button"
               onClick={endTurn}
               style={{
                 padding: '0.5rem 1rem',
@@ -990,6 +999,7 @@ export default function GamePage() {
             {apiSettings?.apiKey ? '⚙️' : '⚠️'}
           </button>
           <button
+            data-testid="create-period-button"
             onClick={() => setShowAddPeriod(true)}
             style={{
               padding: '0.5rem 1rem',

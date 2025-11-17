@@ -6,18 +6,40 @@ import { createMockClaudeResponse } from '../fixtures/ai-responses';
  */
 
 /**
+ * Mock the /api/models endpoint used by API Settings modal
+ * This prevents the modal from hanging while trying to fetch models
+ */
+export async function mockModelsAPI(page: Page) {
+  await page.route('**/api/models', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        claude: [
+          { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', recommended: true }
+        ],
+        openai: []
+      }),
+    });
+  });
+}
+
+/**
  * Mock the Claude API to return a predefined response
  */
 export async function mockClaudeAPI(page: Page, responseText: string) {
-  await page.route('**/v1/messages', async (route) => {
-    const response = createMockClaudeResponse(responseText);
+  // Always mock the models API when mocking AI chat
+  await mockModelsAPI(page);
+
+  await page.route('**/api/ai/chat', async (route) => {
+    // API route returns { response: string }, not Claude API format
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify(response),
+      body: JSON.stringify({ response: responseText }),
     });
   });
 }
@@ -27,20 +49,23 @@ export async function mockClaudeAPI(page: Page, responseText: string) {
  * Each API call will return the next response in the array
  */
 export async function mockClaudeAPISequence(page: Page, responses: string[]) {
+  // Always mock the models API when mocking AI chat
+  await mockModelsAPI(page);
+
   let callCount = 0;
 
-  await page.route('**/v1/messages', async (route) => {
+  await page.route('**/api/ai/chat', async (route) => {
     const responseText = responses[callCount] || responses[responses.length - 1];
     callCount++;
 
-    const response = createMockClaudeResponse(responseText);
+    // API route returns { response: string }, not Claude API format
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify(response),
+      body: JSON.stringify({ response: responseText }),
     });
   });
 }
@@ -106,24 +131,46 @@ export async function sendMessage(page: Page, message: string, waitForResponse: 
   // Wait a bit to ensure any modals have closed
   await page.waitForTimeout(500);
 
-  const messageInput = page.locator('textarea, input[type="text"]').last();
+  // First try to use the test ID selector
+  let messageInput = page.locator('[data-testid="message-input"]');
+
+  // If not found, fall back to generic selector
+  if (!(await messageInput.isVisible({ timeout: 1000 }).catch(() => false))) {
+    messageInput = page.locator('textarea, input[type="text"]').last();
+  }
 
   // Wait longer and retry if not found
   try {
     await messageInput.waitFor({ state: 'visible', timeout: 10000 });
   } catch (e) {
-    // Try to close any lingering modal
-    const modalOverlay = page.locator('[class*="modal"], [role="dialog"]').first();
-    if (await modalOverlay.isVisible({ timeout: 500 }).catch(() => false)) {
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(500);
+    // Try to close any lingering modal - use the test ID we just added
+    const apiModal = page.locator('[data-testid="api-settings-modal"]');
+    if (await apiModal.isVisible({ timeout: 500 }).catch(() => false)) {
+      const closeButton = page.locator('[data-testid="close-modal-button"]');
+      if (await closeButton.isVisible({ timeout: 500 }).catch(() => false)) {
+        await closeButton.click();
+        await page.waitForTimeout(500);
+      } else {
+        // If there's no close button, try escape
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(500);
+      }
     }
     // Retry finding the input
     await messageInput.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   await messageInput.fill(message);
-  await messageInput.press('Enter');
+
+  // Use the send button instead of pressing Enter
+  const sendButton = page.locator('[data-testid="send-message-button"]');
+  if (await sendButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+    // Use force: true to bypass any overlay/intercepting elements
+    await sendButton.click({ force: true });
+  } else {
+    // Fall back to pressing Enter
+    await messageInput.press('Enter');
+  }
 
   if (waitForResponse) {
     // Wait for AI to respond
@@ -135,28 +182,36 @@ export async function sendMessage(page: Page, message: string, waitForResponse: 
  * Navigate to meta chat (Game Setup)
  */
 export async function navigateToMetaChat(page: Page) {
-  // Wait for API Settings modal to close completely
-  // The modal might appear briefly even with localStorage set
-  await page.waitForTimeout(1000);
+  // Wait a bit for page to fully load and hydrate
+  await page.waitForTimeout(1500);
 
-  // Check if modal is still visible and close it
-  const closeButton = page.getByRole('button', { name: /close|cancel|×/i });
-  const saveButton = page.getByRole('button', { name: /save/i });
+  // Check if API settings modal is still visible
+  const apiModal = page.locator('[data-testid="api-settings-modal"]');
+  if (await apiModal.isVisible({ timeout: 2000 }).catch(() => false)) {
+    console.warn('API Settings modal appeared despite localStorage being set. Filling and saving...');
 
-  // Try to close modal if it exists
-  if (await closeButton.isVisible({ timeout: 500 }).catch(() => false)) {
-    await closeButton.click({ force: true });
-    await page.waitForTimeout(500);
-  } else if (await saveButton.isVisible({ timeout: 500 }).catch(() => false)) {
-    await saveButton.click({ force: true });
-    await page.waitForTimeout(500);
+    // Check if API key field is empty (validation error)
+    const apiKeyInput = apiModal.locator('input[type="password"]');
+    const currentValue = await apiKeyInput.inputValue();
+
+    if (!currentValue || currentValue.trim() === '') {
+      // Field is empty, fill it
+      await apiKeyInput.fill('sk-test-key-12345-do-not-use-in-production');
+    }
+
+    // Now click the save button
+    const saveButton = page.locator('[data-testid="save-settings-button"]');
+    await saveButton.click();
+
+    // Wait for modal to actually disappear
+    await apiModal.waitFor({ state: 'hidden', timeout: 5000 });
+    await page.waitForTimeout(500); // Extra wait for animations
   }
 
-  const gameSetup = page.getByText('Game Setup').first();
-  await gameSetup.waitFor({ state: 'visible', timeout: 10000 });
-
-  // Use force: true to bypass any overlapping elements
-  await gameSetup.click({ force: true, timeout: 5000 });
+  // Use the test ID to find meta chat
+  const metaChat = page.locator('[data-testid="meta-chat"]');
+  await metaChat.waitFor({ state: 'visible', timeout: 10000 });
+  await metaChat.click({ timeout: 5000 });
 
   await page.waitForTimeout(500); // Wait for conversation to load
 }

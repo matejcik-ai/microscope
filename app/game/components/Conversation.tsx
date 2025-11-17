@@ -203,6 +203,7 @@ export default function ConversationView({
         {/* Textarea - full width on mobile */}
         <div style={{ marginBottom: '0.5rem' }}>
           <textarea
+            data-testid="message-input"
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -285,6 +286,7 @@ export default function ConversationView({
             </button>
           )}
           <button
+            data-testid="send-message-button"
             type="submit"
             disabled={!input.trim() || isLoading}
             style={{
